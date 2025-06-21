@@ -1,7 +1,7 @@
 "use client"
 
 import type React from "react"
-
+import { useEffect } from "react"
 import { useState } from "react"
 import { useRouter } from "next/navigation"
 import Link from "next/link"
@@ -14,7 +14,8 @@ import { Separator } from "@/components/ui/separator"
 import { useAuth } from "@/hooks/use-auth"
 import { useToast } from "@/hooks/use-toast"
 import { Github, Twitter, Eye, EyeOff } from "lucide-react"
-import { signup, validateSignupData } from '@/services/auth';
+import { signup} from '@/services/auth';
+import authService from '@/services/auth';
 
 export default function RegisterPage() {
   const [name, setName] = useState("")
@@ -28,6 +29,11 @@ export default function RegisterPage() {
   const router = useRouter()
   const [showPassword, setShowPassword] = useState(false)
   const [showConfirmPassword, setShowConfirmPassword] = useState(false)
+  const [authState, setAuthState] = useState(authService.getAuthState());
+  useEffect(() => {
+    const unsubscribe = authService.subscribe(setAuthState);
+    return unsubscribe;
+  }, []);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
