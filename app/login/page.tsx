@@ -1,30 +1,28 @@
 "use client"
 
-import type React from "react"
-
-import { useState } from "react"
+import React, { useState, useEffect } from "react"
 import { useRouter } from "next/navigation"
 import Link from "next/link"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
-import { useAuth } from "@/hooks/use-auth"
-import { useToast } from "@/hooks/use-toast"
+import { useAuthService } from "@/services/auth" // Changed from useAuth to useAuthService
+import { toast } from "@/components/ui/use-toast" // Changed from useToast hook to direct import
 import { Eye, EyeOff } from "lucide-react"
 
 export default function LoginPage() {
   const [email, setEmail] = useState("")
   const [password, setPassword] = useState("")
   const [isSubmitting, setIsSubmitting] = useState(false)
-  const { signIn } = useAuth()
-  const { toast } = useToast()
+  const { signIn, isAuthenticated, isLoading } = useAuthService() // Using the integrated auth service
   const router = useRouter()
   const [showPassword, setShowPassword] = useState(false)
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
 
+    // Validation
     if (!email) {
       toast({
         title: "Email required",
@@ -49,18 +47,41 @@ export default function LoginPage() {
       await signIn(email, password)
       toast({
         title: "Login successful",
-        description: "Welcome back to BetWise!",
+        description: "Welcome back to WagerMe!",
       })
       router.push("/")
     } catch (error) {
       toast({
         title: "Login failed",
-        description: "Invalid email or password. Please try again.",
+        description: error instanceof Error ? error.message : "Invalid email or password. Please try again.",
         variant: "destructive",
       })
     } finally {
       setIsSubmitting(false)
     }
+  }
+
+  // If user is already authenticated, redirect them
+  useEffect(() => {
+    if (isAuthenticated && !isLoading) {
+      router.push("/")
+    }
+  }, [isAuthenticated, isLoading, router])
+
+  // Show loading state during auth initialization
+  if (isLoading) {
+    return (
+      <div className="container mx-auto px-4 py-16 flex justify-center">
+        <Card className="w-full max-w-md">
+          <CardContent className="flex justify-center items-center py-16">
+            <div className="text-center">
+              <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary mx-auto mb-4"></div>
+              <p className="text-muted-foreground">Loading...</p>
+            </div>
+          </CardContent>
+        </Card>
+      </div>
+    )
   }
 
   return (
@@ -82,6 +103,7 @@ export default function LoginPage() {
                 placeholder="name@example.com"
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
+                disabled={isSubmitting}
               />
             </div>
             <div className="space-y-2">
@@ -97,6 +119,7 @@ export default function LoginPage() {
                   type={showPassword ? "text" : "password"}
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
+                  disabled={isSubmitting}
                 />
                 <Button
                   type="button"
@@ -104,6 +127,7 @@ export default function LoginPage() {
                   size="sm"
                   className="absolute right-0 top-0 h-full px-3 py-2 hover:bg-transparent"
                   onClick={() => setShowPassword(!showPassword)}
+                  disabled={isSubmitting}
                 >
                   {showPassword ? (
                     <EyeOff className="h-4 w-4 text-neutral-dark" />
@@ -113,7 +137,11 @@ export default function LoginPage() {
                 </Button>
               </div>
             </div>
-            <Button type="submit" className="w-full bg-primary hover:bg-primary-dark" disabled={isSubmitting}>
+            <Button 
+              type="submit" 
+              className="w-full bg-primary hover:bg-primary-dark" 
+              disabled={isSubmitting || isLoading}
+            >
               {isSubmitting ? "Logging in..." : "Log in"}
             </Button>
           </form>

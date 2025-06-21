@@ -19,89 +19,183 @@ import { Menu, X, LogOut, User, Wallet, Settings, BarChart3 } from "lucide-react
 
 export function Header() {
   const [isMenuOpen, setIsMenuOpen] = useState(false)
-  const { user, signOut } = useAuthService()
+  // Added isAuthenticated and isLoading to the destructuring
+  const { user, isAuthenticated, isLoading, signOut } = useAuthService()
   const { toast } = useToast()
 
-  const handleSignOut = () => {
-    signOut()
-    toast({
-      title: "Signed out successfully",
-      description: "You have been signed out of your account.",
-    })
+  const handleSignOut = async () => {
+    try {
+      await signOut()
+      toast({
+        title: "Signed out successfully",
+        description: "You have been signed out of your account.",
+      })
+    } catch (error) {
+      toast({
+        title: "Sign out failed",
+        description: "There was an error signing you out. Please try again.",
+        variant: "destructive",
+      })
+    }
+  }
+
+  // Show loading state while auth is initializing
+  if (isLoading) {
+    return (
+      <header className="sticky top-0 z-50 w-full border-b bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
+        <div className="container flex h-14 items-center">
+          <div className="mr-4 hidden md:flex">
+            <Link className="mr-6 flex items-center space-x-2" href="/">
+              <span className="hidden font-bold sm:inline-block">WagerMe</span>
+            </Link>
+          </div>
+          <div className="flex flex-1 items-center justify-between space-x-2 md:justify-end">
+            <div className="w-full flex-1 md:w-auto md:flex-none">
+              <div className="animate-pulse h-8 w-20 bg-muted rounded"></div>
+            </div>
+          </div>
+        </div>
+      </header>
+    )
   }
 
   return (
-    <header className="bg-primary text-white sticky top-0 z-50">
-      <div className="container mx-auto px-4">
-        <div className="flex items-center justify-between h-16">
-          <div className="flex items-center">
-            <Link href="/" className="flex items-center">
-              <span className="text-xl font-bold">WagerMe</span>
+    <header className="sticky top-0 z-50 w-full border-b bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
+      <div className="container flex h-14 items-center">
+        <div className="mr-4 hidden md:flex">
+          <Link className="mr-6 flex items-center space-x-2" href="/">
+            <span className="hidden font-bold sm:inline-block">WagerMe</span>
+          </Link>
+          <nav className="flex items-center space-x-6 text-sm font-medium">
+            <Link
+              className="transition-colors hover:text-foreground/80 text-foreground/60"
+              href="/markets"
+            >
+              Markets
             </Link>
-            <nav className="hidden md:flex ml-10 space-x-8">
-              <Link href="/wagers" className="text-white hover:text-secondary transition-colors">
-                Markets
+            <Link
+              className="transition-colors hover:text-foreground/80 text-foreground/60"
+              href="/leaderboard"
+            >
+              Leaderboard
+            </Link>
+            {isAuthenticated && (
+              <Link
+                className="transition-colors hover:text-foreground/80 text-foreground/60"
+                href="/portfolio"
+              >
+                Portfolio
               </Link>
-              <Link href="/wagers/create" className="text-white hover:text-secondary transition-colors">
-                Create
-              </Link>
-              <Link href="/leaderboard" className="text-white hover:text-secondary transition-colors">
-                Leaderboard
-              </Link>
-              <Link href="/how-it-works" className="text-white hover:text-secondary transition-colors">
-                How It Works
-              </Link>
-            </nav>
-          </div>
-
-          <div className="hidden md:flex items-center space-x-4">
-            {user ? (
-              <>
-                <Button
-                  variant="outline"
-                  className="bg-transparent text-white border-white hover:bg-white hover:text-primary"
+            )}
+          </nav>
+        </div>
+        <Sheet open={isMenuOpen} onOpenChange={setIsMenuOpen}>
+          <SheetTrigger asChild>
+            <Button
+              variant="ghost"
+              className="mr-2 px-0 text-base hover:bg-transparent focus-visible:bg-transparent focus-visible:ring-0 focus-visible:ring-offset-0 md:hidden"
+            >
+              <Menu className="h-5 w-5" />
+              <span className="sr-only">Toggle Menu</span>
+            </Button>
+          </SheetTrigger>
+          <SheetContent side="left" className="pr-0">
+            <Link
+              className="flex items-center"
+              href="/"
+              onClick={() => setIsMenuOpen(false)}
+            >
+              <span className="font-bold">WagerMe</span>
+            </Link>
+            <div className="my-4 h-[calc(100vh-8rem)] pb-10 pl-6">
+              <div className="flex flex-col space-y-3">
+                <Link
+                  className="text-muted-foreground hover:text-foreground"
+                  href="/markets"
+                  onClick={() => setIsMenuOpen(false)}
                 >
-                  <Wallet className="mr-2 h-4 w-4" />
-                  <span>₦45,000.00</span>
-                </Button>
+                  Markets
+                </Link>
+                <Link
+                  className="text-muted-foreground hover:text-foreground"
+                  href="/leaderboard"
+                  onClick={() => setIsMenuOpen(false)}
+                >
+                  Leaderboard
+                </Link>
+                {isAuthenticated && (
+                  <Link
+                    className="text-muted-foreground hover:text-foreground"
+                    href="/portfolio"
+                    onClick={() => setIsMenuOpen(false)}
+                  >
+                    Portfolio
+                  </Link>
+                )}
+              </div>
+            </div>
+          </SheetContent>
+        </Sheet>
+        <div className="flex flex-1 items-center justify-between space-x-2 md:justify-end">
+          <div className="w-full flex-1 md:w-auto md:flex-none">
+            {/* Mobile logo */}
+            <Link className="flex items-center md:hidden" href="/">
+              <span className="font-bold">WagerMe</span>
+            </Link>
+          </div>
+          <nav className="flex items-center space-x-2">
+            {isAuthenticated && user ? (
+              <>
+                {/* Authenticated user menu */}
                 <DropdownMenu>
                   <DropdownMenuTrigger asChild>
                     <Button variant="ghost" className="relative h-8 w-8 rounded-full">
                       <Avatar className="h-8 w-8">
-                        <AvatarImage src="/placeholder.svg?height=32&width=32" alt={user.username} />
-                        <AvatarFallback>{user.username.charAt(0)}</AvatarFallback>
+                        <AvatarImage src="" alt={user.username} />
+                        <AvatarFallback>
+                          {user.username?.charAt(0)?.toUpperCase() || 'U'}
+                        </AvatarFallback>
                       </Avatar>
                     </Button>
                   </DropdownMenuTrigger>
-                  <DropdownMenuContent align="end">
-                    <DropdownMenuLabel>My Account</DropdownMenuLabel>
+                  <DropdownMenuContent className="w-56" align="end" forceMount>
+                    <DropdownMenuLabel className="font-normal">
+                      <div className="flex flex-col space-y-1">
+                        <p className="text-sm font-medium leading-none">
+                          {user.username}
+                        </p>
+                        <p className="text-xs leading-none text-muted-foreground">
+                          {user.email}
+                        </p>
+                      </div>
+                    </DropdownMenuLabel>
                     <DropdownMenuSeparator />
                     <DropdownMenuItem asChild>
-                      <Link href="/profile" className="cursor-pointer">
+                      <Link href="/profile" className="flex items-center">
                         <User className="mr-2 h-4 w-4" />
                         <span>Profile</span>
                       </Link>
                     </DropdownMenuItem>
                     <DropdownMenuItem asChild>
-                      <Link href="/wallet" className="cursor-pointer">
+                      <Link href="/wallet" className="flex items-center">
                         <Wallet className="mr-2 h-4 w-4" />
                         <span>Wallet</span>
                       </Link>
                     </DropdownMenuItem>
                     <DropdownMenuItem asChild>
-                      <Link href="/my-wagers" className="cursor-pointer">
+                      <Link href="/portfolio" className="flex items-center">
                         <BarChart3 className="mr-2 h-4 w-4" />
-                        <span>My Wagers</span>
+                        <span>Portfolio</span>
                       </Link>
                     </DropdownMenuItem>
                     <DropdownMenuItem asChild>
-                      <Link href="/settings" className="cursor-pointer">
+                      <Link href="/settings" className="flex items-center">
                         <Settings className="mr-2 h-4 w-4" />
                         <span>Settings</span>
                       </Link>
                     </DropdownMenuItem>
                     <DropdownMenuSeparator />
-                    <DropdownMenuItem onClick={handleSignOut} className="cursor-pointer">
+                    <DropdownMenuItem onClick={handleSignOut}>
                       <LogOut className="mr-2 h-4 w-4" />
                       <span>Log out</span>
                     </DropdownMenuItem>
@@ -110,132 +204,16 @@ export function Header() {
               </>
             ) : (
               <>
-                <Button asChild variant="ghost" className="text-white hover:text-secondary">
+                {/* Unauthenticated user buttons */}
+                <Button variant="ghost" asChild>
                   <Link href="/login">Log in</Link>
                 </Button>
-                <Button asChild className="bg-accent hover:bg-accent-dark">
+                <Button asChild>
                   <Link href="/register">Sign up</Link>
                 </Button>
               </>
             )}
-          </div>
-
-          <div className="md:hidden">
-            <Sheet open={isMenuOpen} onOpenChange={setIsMenuOpen}>
-              <SheetTrigger asChild>
-                <Button variant="ghost" size="icon" className="text-white">
-                  <Menu className="h-6 w-6" />
-                </Button>
-              </SheetTrigger>
-              <SheetContent side="right" className="w-[300px] sm:w-[400px]">
-                <div className="flex flex-col h-full">
-                  <div className="flex items-center justify-between py-4">
-                    <span className="text-xl font-bold">WagerMe</span>
-                    <Button variant="ghost" size="icon" onClick={() => setIsMenuOpen(false)}>
-                      <X className="h-6 w-6" />
-                    </Button>
-                  </div>
-                  <nav className="flex flex-col space-y-4">
-                    <Link
-                      href="/wagers"
-                      className="px-4 py-2 hover:bg-neutral-light rounded-md"
-                      onClick={() => setIsMenuOpen(false)}
-                    >
-                      Markets
-                    </Link>
-                    <Link
-                      href="/wagers/create"
-                      className="px-4 py-2 hover:bg-neutral-light rounded-md"
-                      onClick={() => setIsMenuOpen(false)}
-                    >
-                      Create
-                    </Link>
-                    <Link
-                      href="/leaderboard"
-                      className="px-4 py-2 hover:bg-neutral-light rounded-md"
-                      onClick={() => setIsMenuOpen(false)}
-                    >
-                      Leaderboard
-                    </Link>
-                    <Link
-                      href="/how-it-works"
-                      className="px-4 py-2 hover:bg-neutral-light rounded-md"
-                      onClick={() => setIsMenuOpen(false)}
-                    >
-                      How It Works
-                    </Link>
-                  </nav>
-                  <div className="mt-auto">
-                    {user ? (
-                      <div className="space-y-4">
-                        <div className="flex items-center space-x-4 px-4 py-2">
-                          <Avatar className="h-10 w-10">
-                            <AvatarImage src="/placeholder.svg?height=40&width=40" alt={user.username} />
-                            <AvatarFallback>{user.username.charAt(0)}</AvatarFallback>
-                          </Avatar>
-                          <div>
-                            <p className="font-medium">{user.username}</p>
-                            <p className="text-sm text-neutral-dark">{user.email}</p>
-                          </div>
-                        </div>
-                        <div className="px-4">
-                          <Button variant="outline" className="w-full justify-start">
-                            <Wallet className="mr-2 h-4 w-4" />
-                            <span>Wallet: ₦45,000.00</span>
-                          </Button>
-                        </div>
-                        <nav className="flex flex-col space-y-1">
-                          <Link
-                            href="/profile"
-                            className="px-4 py-2 hover:bg-neutral-light rounded-md flex items-center"
-                            onClick={() => setIsMenuOpen(false)}
-                          >
-                            <User className="mr-2 h-4 w-4" />
-                            <span>Profile</span>
-                          </Link>
-                          <Link
-                            href="/my-wagers"
-                            className="px-4 py-2 hover:bg-neutral-light rounded-md flex items-center"
-                            onClick={() => setIsMenuOpen(false)}
-                          >
-                            <BarChart3 className="mr-2 h-4 w-4" />
-                            <span>My Wagers</span>
-                          </Link>
-                          <Link
-                            href="/settings"
-                            className="px-4 py-2 hover:bg-neutral-light rounded-md flex items-center"
-                            onClick={() => setIsMenuOpen(false)}
-                          >
-                            <Settings className="mr-2 h-4 w-4" />
-                            <span>Settings</span>
-                          </Link>
-                        </nav>
-                        <div className="px-4 pt-2">
-                          <Button onClick={handleSignOut} variant="destructive" className="w-full">
-                            <LogOut className="mr-2 h-4 w-4" />
-                            <span>Log out</span>
-                          </Button>
-                        </div>
-                      </div>
-                    ) : (
-                      <div className="p-4 space-y-4">
-                        <Button asChild variant="outline" className="w-full">
-                          <Link href="/login" onClick={() => setIsMenuOpen(false)}>
-                            Log in
-                          </Link>
-                        </Button>
-                        <Button asChild className="w-full bg-accent hover:bg-accent-dark">
-                          <Link href="/register" onClick={() => setIsMenuOpen(false)}>
-                            Sign up
-                          </Link>
-                        </Button>
-                      </div>
-                    )}
-                  </div>
-                </div>
-              </SheetContent>
-            </Sheet>
-          </div>
+          </nav>
         </div>
       </div>
     </header>
