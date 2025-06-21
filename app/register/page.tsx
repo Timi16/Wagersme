@@ -14,6 +14,7 @@ import { Separator } from "@/components/ui/separator"
 import { useAuth } from "@/hooks/use-auth"
 import { useToast } from "@/hooks/use-toast"
 import { Github, Twitter, Eye, EyeOff } from "lucide-react"
+import { signup, validateSignupData } from '@/services/auth'; 
 
 export default function RegisterPage() {
   const [name, setName] = useState("")
@@ -30,34 +31,20 @@ export default function RegisterPage() {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
-
-    if (!name) {
+  
+    // Validate form data
+    const formData = { name, email, password };
+    const validationErrors = validateSignupData(formData);
+    
+    if (validationErrors.length > 0) {
       toast({
-        title: "Name required",
-        description: "Please enter your name.",
+        title: "Validation Error",
+        description: validationErrors[0],
         variant: "destructive",
-      })
-      return
+      });
+      return;
     }
-
-    if (!email) {
-      toast({
-        title: "Email required",
-        description: "Please enter your email address.",
-        variant: "destructive",
-      })
-      return
-    }
-
-    if (!password) {
-      toast({
-        title: "Password required",
-        description: "Please enter a password.",
-        variant: "destructive",
-      })
-      return
-    }
-
+  
     if (password !== confirmPassword) {
       toast({
         title: "Passwords don't match",
@@ -66,7 +53,7 @@ export default function RegisterPage() {
       })
       return
     }
-
+  
     if (!agreeTerms) {
       toast({
         title: "Terms agreement required",
@@ -75,20 +62,20 @@ export default function RegisterPage() {
       })
       return
     }
-
+  
     setIsSubmitting(true)
-
+  
     try {
-      await signUp(name, email, password)
+      await signup(formData);
       toast({
         title: "Registration successful",
-        description: "Welcome to BetWise! Your account has been created.",
+        description: "Welcome to WagerMe! Your account has been created.",
       })
       router.push("/")
     } catch (error) {
       toast({
         title: "Registration failed",
-        description: "There was an error creating your account. Please try again.",
+        description: error instanceof Error ? error.message : "There was an error creating your account. Please try again.",
         variant: "destructive",
       })
     } finally {

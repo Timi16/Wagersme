@@ -1,5 +1,6 @@
+// Types
 interface SignupRequest {
-    username: string;
+    name: string;
     email: string;
     password: string;
   }
@@ -9,7 +10,7 @@ interface SignupRequest {
     message?: string;
     user?: {
       id: string;
-      username: string;
+      name: string;
       email: string;
     };
     token?: string;
@@ -22,7 +23,7 @@ interface SignupRequest {
   }
   
   // Configuration
-  const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:6000';
+  const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000';
   
   // Auth service class
   class AuthService {
@@ -64,8 +65,8 @@ interface SignupRequest {
     validateSignupData(userData: SignupRequest): string[] {
       const errors: string[] = [];
   
-      if (!userData.username || userData.username.trim().length < 3) {
-        errors.push('Username must be at least 3 characters long');
+      if (!userData.name || userData.name.trim().length < 2) {
+        errors.push('Name must be at least 2 characters long');
       }
   
       if (!userData.email || !this.isValidEmail(userData.email)) {
