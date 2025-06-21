@@ -1,4 +1,5 @@
 import React from 'react';
+
 // Types
 interface SignupRequest {
     username: string;
@@ -32,14 +33,23 @@ interface SignupRequest {
     isLoading: boolean;
   }
   
-  // Configuration
-  const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3000';
+  // Configuration - Updated to match server port
+  const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000';
+  
+  // Helper function to safely access localStorage
+  const getLocalStorage = () => {
+    if (typeof window !== 'undefined') {
+      return window.localStorage;
+    }
+    return null;
+  };
   
   // Auth service class with state management
   class AuthService {
     private baseUrl: string;
     private authState: AuthState;
     private listeners: Set<(state: AuthState) => void>;
+    private isInitialized: boolean = false;
   
     constructor(baseUrl: string = API_URL) {
       this.baseUrl = baseUrl;
@@ -50,30 +60,47 @@ interface SignupRequest {
       };
       this.listeners = new Set();
       
-      // Initialize from stored token if available
-      this.initializeAuth();
+      // Only initialize in browser environment
+      if (typeof window !== 'undefined') {
+        this.initializeAuth();
+      }
     }
   
     /**
      * Initialize authentication from stored token
      */
     private async initializeAuth() {
+      if (this.isInitialized) return;
+      
       try {
-        const token = localStorage.getItem('auth_token');
+        const localStorage = getLocalStorage();
+        const token = localStorage?.getItem('auth_token');
+        
         if (token) {
+          console.log('Found stored token, verifying...');
           // Verify token and get user data
           const user = await this.verifyToken(token);
           if (user) {
+            console.log('Token verified, user authenticated:', user);
             this.updateAuthState({
               user,
               isAuthenticated: true,
               isLoading: false,
             });
+          } else {
+            console.log('Token verification failed, clearing token');
+            localStorage?.removeItem('auth_token');
           }
+        } else {
+          console.log('No stored token found');
         }
       } catch (error) {
+        console.error('Auth initialization error:', error);
         // Clear invalid token
-        localStorage.removeItem('auth_token');
+        const localStorage = getLocalStorage();
+        localStorage?.removeItem('auth_token');
+      } finally {
+        this.isInitialized = true;
       }
     }
   
@@ -94,6 +121,7 @@ interface SignupRequest {
         }
         return null;
       } catch (error) {
+        console.error('Token verification error:', error);
         return null;
       }
     }
@@ -103,6 +131,7 @@ interface SignupRequest {
      */
     private updateAuthState(newState: Partial<AuthState>) {
       this.authState = { ...this.authState, ...newState };
+      console.log('Auth state updated:', this.authState);
       this.listeners.forEach(listener => listener(this.authState));
     }
   
@@ -126,12 +155,22 @@ interface SignupRequest {
     }
   
     /**
-     * Sign up a new user and automatically log them in
+     * Ensure auth is initialized (for client-side usage)
+     */
+    async ensureInitialized() {
+      if (!this.isInitialized && typeof window !== 'undefined') {
+        await this.initializeAuth();
+      }
+    }
+  
+    /**
+     * Sign up a new user
      */
     async signup(userData: SignupRequest): Promise<SignupResponse> {
       this.updateAuthState({ isLoading: true });
   
       try {
+        console.log('Attempting signup for:', userData.username);
         const response = await fetch(`${this.baseUrl}/api/auth/signup`, {
           method: 'POST',
           headers: {
@@ -141,6 +180,7 @@ interface SignupRequest {
         });
   
         const data = await response.json();
+        console.log('Signup response:', data);
   
         if (!response.ok) {
           throw new Error(data.message || 'Signup failed');
@@ -148,7 +188,9 @@ interface SignupRequest {
   
         // If signup includes a token, store it and update auth state
         if (data.token) {
-          localStorage.setItem('auth_token', data.token);
+          console.log('Token received from signup, storing and authenticating user');
+          const localStorage = getLocalStorage();
+          localStorage?.setItem('auth_token', data.token);
           
           // Update auth state with user data
           this.updateAuthState({
@@ -162,6 +204,7 @@ interface SignupRequest {
           });
         } else {
           // If no token returned, just stop loading
+          console.log('No token received from signup');
           this.updateAuthState({ isLoading: false });
         }
   
@@ -179,8 +222,11 @@ interface SignupRequest {
     async signOut() {
       try {
         // Call backend to invalidate token
-        const token = localStorage.getItem('auth_token');
+        const localStorage = getLocalStorage();
+        const token = localStorage?.getItem('auth_token');
+        
         if (token) {
+          console.log('Signing out, invalidating token');
           await fetch(`${this.baseUrl}/api/auth/signout`, {
             method: 'POST',
             headers: {
@@ -192,7 +238,9 @@ interface SignupRequest {
         console.error('Signout error:', error);
       } finally {
         // Clear local storage and update state
-        localStorage.removeItem('auth_token');
+        console.log('Clearing auth state and local storage');
+        const localStorage = getLocalStorage();
+        localStorage?.removeItem('auth_token');
         this.updateAuthState({
           user: null,
           isAuthenticated: false,
@@ -208,6 +256,7 @@ interface SignupRequest {
       this.updateAuthState({ isLoading: true });
   
       try {
+        console.log('Attempting sign in for:', email);
         const response = await fetch(`${this.baseUrl}/api/auth/signin`, {
           method: 'POST',
           headers: {
@@ -217,6 +266,7 @@ interface SignupRequest {
         });
   
         const data = await response.json();
+        console.log('Sign in response:', data);
   
         if (!response.ok) {
           throw new Error(data.message || 'Sign in failed');
@@ -224,7 +274,9 @@ interface SignupRequest {
   
         // Store token and update auth state
         if (data.token) {
-          localStorage.setItem('auth_token', data.token);
+          console.log('Token received from sign in, storing');
+          const localStorage = getLocalStorage();
+          localStorage?.setItem('auth_token', data.token);
         }
   
         const user = {
@@ -277,11 +329,14 @@ interface SignupRequest {
   // Create singleton instance
   const authService = new AuthService();
   
-  // Custom hook for React components (similar to useAuth)
+  // Custom hook for React components
   export const useAuthService = () => {
     const [authState, setAuthState] = React.useState<AuthState>(authService.getAuthState());
   
     React.useEffect(() => {
+      // Ensure initialization on client side
+      authService.ensureInitialized();
+      
       const unsubscribe = authService.subscribe(setAuthState);
       return unsubscribe;
     }, []);

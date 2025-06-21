@@ -13,13 +13,13 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu"
 import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet"
-import { useAuth } from "@/hooks/use-auth"
+import { useAuthService } from "@/services/auth"
 import { useToast } from "@/hooks/use-toast"
 import { Menu, X, LogOut, User, Wallet, Settings, BarChart3 } from "lucide-react"
 
 export function Header() {
   const [isMenuOpen, setIsMenuOpen] = useState(false)
-  const { user, signOut } = useAuth()
+  const { user, signOut } = useAuthService()
   const { toast } = useToast()
 
   const handleSignOut = () => {
@@ -68,8 +68,8 @@ export function Header() {
                   <DropdownMenuTrigger asChild>
                     <Button variant="ghost" className="relative h-8 w-8 rounded-full">
                       <Avatar className="h-8 w-8">
-                        <AvatarImage src="/placeholder.svg?height=32&width=32" alt={user.name} />
-                        <AvatarFallback>{user.name.charAt(0)}</AvatarFallback>
+                        <AvatarImage src="/placeholder.svg?height=32&width=32" alt={user.username} />
+                        <AvatarFallback>{user.username.charAt(0)}</AvatarFallback>
                       </Avatar>
                     </Button>
                   </DropdownMenuTrigger>
@@ -170,11 +170,11 @@ export function Header() {
                       <div className="space-y-4">
                         <div className="flex items-center space-x-4 px-4 py-2">
                           <Avatar className="h-10 w-10">
-                            <AvatarImage src="/placeholder.svg?height=40&width=40" alt={user.name} />
-                            <AvatarFallback>{user.name.charAt(0)}</AvatarFallback>
+                            <AvatarImage src="/placeholder.svg?height=40&width=40" alt={user.username} />
+                            <AvatarFallback>{user.username.charAt(0)}</AvatarFallback>
                           </Avatar>
                           <div>
-                            <p className="font-medium">{user.name}</p>
+                            <p className="font-medium">{user.username}</p>
                             <p className="text-sm text-neutral-dark">{user.email}</p>
                           </div>
                         </div>
