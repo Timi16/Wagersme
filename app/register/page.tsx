@@ -14,7 +14,7 @@ import { Separator } from "@/components/ui/separator"
 import { useAuth } from "@/hooks/use-auth"
 import { useToast } from "@/hooks/use-toast"
 import { Github, Twitter, Eye, EyeOff } from "lucide-react"
-import { signup, validateSignupData } from '@/services/auth'; 
+import { signup, validateSignupData } from '@/services/auth';
 
 export default function RegisterPage() {
   const [name, setName] = useState("")
@@ -32,17 +32,31 @@ export default function RegisterPage() {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
   
-    // Validate form data
-    const formData = { name, email, password };
-    const validationErrors = validateSignupData(formData);
-    
-    if (validationErrors.length > 0) {
+    if (!name) {
       toast({
-        title: "Validation Error",
-        description: validationErrors[0],
+        title: "Name required",
+        description: "Please enter your name.",
         variant: "destructive",
-      });
-      return;
+      })
+      return
+    }
+  
+    if (!email) {
+      toast({
+        title: "Email required", 
+        description: "Please enter your email address.",
+        variant: "destructive",
+      })
+      return
+    }
+  
+    if (!password) {
+      toast({
+        title: "Password required",
+        description: "Please enter a password.",
+        variant: "destructive",
+      })
+      return
     }
   
     if (password !== confirmPassword) {
@@ -66,7 +80,14 @@ export default function RegisterPage() {
     setIsSubmitting(true)
   
     try {
-      await signup(formData);
+      // Use the helper function that converts name to username
+      const result = await signup({
+        username: name,
+        email,
+        password,
+      });
+      console.log('Registration result:', result);
+      
       toast({
         title: "Registration successful",
         description: "Welcome to WagerMe! Your account has been created.",
