@@ -251,6 +251,45 @@ class WalletService {
   /**
    * Simulate deposit (you can replace with real API call)
    */
+
+  async fetchTransactions(): Promise<Transaction[]> {
+    this.updateWalletState({ isLoading: true, error: null });
+  
+    try {
+      const token = getAuthToken();
+      if (!token) {
+        throw new Error('No authentication token found');
+      }
+  
+      const response = await fetch(`${this.baseUrl}/api/wallet/transactions`, {
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json',
+        },
+      });
+  
+      const data = await response.json();
+      if (!response.ok) {
+        throw new Error(data.message || 'Failed to fetch transactions');
+      }
+  
+      const transactions: Transaction[] = data.transactions;
+      this.updateWalletState({
+        transactions,
+        isLoading: false,
+        error: null,
+      });
+  
+      return transactions;
+    } catch (error) {
+      const errorMessage = error instanceof Error ? error.message : 'Failed to fetch transactions';
+      this.updateWalletState({
+        isLoading: false,
+        error: errorMessage,
+      });
+      throw error;
+    }
+  }
   async simulateDeposit(amount: number): Promise<boolean> {
     this.updateWalletState({ isLoading: true });
 
@@ -331,6 +370,7 @@ export const useWallet = () => {
     error: walletState.error,
     fetchProfile: walletService.fetchProfile.bind(walletService),
     fetchBalance: walletService.fetchBalance.bind(walletService),
+    fetchTransactions: walletService.fetchTransactions.bind(walletService),
     refreshWalletData: walletService.refreshWalletData.bind(walletService),
     simulateDeposit: walletService.simulateDeposit.bind(walletService),
     simulateWithdrawal: walletService.simulateWithdrawal.bind(walletService),
