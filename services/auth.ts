@@ -124,7 +124,7 @@ class AuthService {
    */
   private async verifyToken(token: string): Promise<User | null> {
     try {
-      const response = await fetch(`${this.baseUrl}/api/auth/verify`, {
+      const response = await fetch(`${this.baseUrl}/auth/verify`, {
         headers: {
           'Authorization': `Bearer ${token}`,
         },
@@ -186,7 +186,7 @@ class AuthService {
 
     try {
       console.log('Attempting signup for:', userData.username);
-      const response = await fetch(`${this.baseUrl}/api/auth/signup`, {
+      const response = await fetch(`${this.baseUrl}/auth/signup`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -264,7 +264,7 @@ class AuthService {
       
       if (token) {
         console.log('Signing out, invalidating token');
-        await fetch(`${this.baseUrl}/api/auth/signout`, {
+        await fetch(`${this.baseUrl}/auth/signout`, {
           method: 'POST',
           headers: {
             'Authorization': `Bearer ${token}`,
@@ -297,7 +297,7 @@ class AuthService {
 
     try {
       console.log('Attempting sign in for:', email);
-      const response = await fetch(`${this.baseUrl}/api/auth/signin`, {
+      const response = await fetch(`${this.baseUrl}/auth/signin`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',

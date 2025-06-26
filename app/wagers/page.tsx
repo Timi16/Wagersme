@@ -1,3 +1,6 @@
+"use client"
+
+import { useState } from "react"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
@@ -5,113 +8,68 @@ import { Badge } from "@/components/ui/badge"
 import { Card, CardContent, CardFooter, CardHeader, CardTitle } from "@/components/ui/card"
 import Link from "next/link"
 import { Search, Filter, Clock, Users, TrendingUp } from "lucide-react"
+import { useWagers } from "@/hooks/useWagers"
 
 const categories = [
   "All",
-  "Sports",
-  "Politics",
-  "Crypto",
-  "Entertainment",
-  "Science",
-  "Technology",
-  "Finance",
-  "Trivia",
-]
-
-const wagers = [
-  {
-    id: "wager-1",
-    title: "Will Bitcoin exceed $100,000 by end of 2025?",
-    category: "Crypto",
-    deadline: "Dec 31, 2025",
-    poolYes: 12500,
-    poolNo: 7500,
-    participants: 156,
-    minStake: 5,
-  },
-  {
-    id: "wager-2",
-    title: "Will the Democrats win the 2024 US Presidential Election?",
-    category: "Politics",
-    deadline: "Nov 5, 2024",
-    poolYes: 18000,
-    poolNo: 22000,
-    participants: 312,
-    minStake: 10,
-  },
-  {
-    id: "wager-3",
-    title: "Will SpaceX successfully land humans on Mars before 2030?",
-    category: "Science",
-    deadline: "Dec 31, 2029",
-    poolYes: 9000,
-    poolNo: 21000,
-    participants: 245,
-    minStake: 5,
-  },
-  {
-    id: "wager-4",
-    title: "Will Apple release a foldable iPhone by the end of 2025?",
-    category: "Technology",
-    deadline: "Dec 31, 2025",
-    poolYes: 8500,
-    poolNo: 11500,
-    participants: 178,
-    minStake: 5,
-  },
-  {
-    id: "wager-5",
-    title: "Will Taylor Swift win Album of the Year at the 2025 Grammy Awards?",
-    category: "Entertainment",
-    deadline: "Feb 15, 2025",
-    poolYes: 15000,
-    poolNo: 5000,
-    participants: 267,
-    minStake: 5,
-  },
-  {
-    id: "wager-6",
-    title: "Will the S&P 500 finish 2024 above 6,000 points?",
-    category: "Finance",
-    deadline: "Dec 31, 2024",
-    poolYes: 14000,
-    poolNo: 16000,
-    participants: 203,
-    minStake: 10,
-  },
-  {
-    id: "wager-7",
-    title: "Will Manchester City win the 2024-25 Premier League?",
-    category: "Sports",
-    deadline: "May 25, 2025",
-    poolYes: 5000,
-    poolNo: 3000,
-    participants: 67,
-    minStake: 5,
-  },
-  {
-    id: "wager-8",
-    title: "Will Ethereum 2.0 fully launch before July 2024?",
-    category: "Crypto",
-    deadline: "Jul 1, 2024",
-    poolYes: 4200,
-    poolNo: 6800,
-    participants: 89,
-    minStake: 10,
-  },
-  {
-    id: "wager-9",
-    title: "Will the next iPhone have a USB-C port?",
-    category: "Technology",
-    deadline: "Sep 30, 2024",
-    poolYes: 7500,
-    poolNo: 2500,
-    participants: 112,
-    minStake: 5,
-  },
+  "sports",
+  "politics",
+  "entertainment",
+  "crypto",
+  "tech",
+  "finance",
+  "weather",
+  "other",
 ]
 
 export default function WagersPage() {
+  const [selectedCategory, setSelectedCategory] = useState("All")
+  const [searchQuery, setSearchQuery] = useState("")
+  const [sortBy, setSortBy] = useState("newest")
+
+  const { wagers, loading, error } = useWagers({
+    category: selectedCategory === "All" ? undefined : selectedCategory,
+    status: "active",
+    limit: 20,
+  })
+
+  if (loading) {
+    return <div className="container mx-auto px-4 py-8">Loading...</div>
+  }
+
+  if (error) {
+    return <div className="container mx-auto px-4 py-8">Error: {error}</div>
+  }
+
+  // Filter wagers based on search query
+  const filteredWagers = wagers.filter((w) =>
+    w.title.toLowerCase().includes(searchQuery.toLowerCase())
+  )
+
+  // Sort wagers for "All Markets" tab
+  const sortedWagers = [...filteredWagers].sort((a, b) => {
+    if (sortBy === "newest") {
+      return new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
+    } else if (sortBy === "poolSize") {
+      return b.totalPool - a.totalPool
+    } else if (sortBy === "participants") {
+      return b.participantCount - a.participantCount
+    } else if (sortBy === "deadline") {
+      return new Date(a.deadline).getTime() - new Date(b.deadline).getTime()
+    }
+    return 0
+  })
+
+  // Sort and slice for "Trending" (top 4 by participants)
+  const trendingWagers = [...filteredWagers]
+    .sort((a, b) => b.participantCount - a.participantCount)
+    .slice(0, 4)
+
+  // Sort and slice for "Ending Soon" (top 4 by deadline)
+  const endingSoonWagers = [...filteredWagers]
+    .sort((a, b) => new Date(a.deadline).getTime() - new Date(b.deadline).getTime())
+    .slice(0, 4)
+
   return (
     <div className="container mx-auto px-4 py-8">
       <div className="flex flex-col md:flex-row justify-between items-start md:items-center mb-8 gap-4">
@@ -127,22 +85,18 @@ export default function WagersPage() {
       <div className="flex flex-col md:flex-row gap-6">
         <div className="md:w-64 space-y-6">
           <div className="bg-white p-4 rounded-lg shadow">
-            <h3 className="font-medium mb-3">Categories</h3>
-            <div className="space-y-2">
+            <h3 className="font-medium mb-3">Category</h3>
+            <select
+              value={selectedCategory}
+              onChange={(e) => setSelectedCategory(e.target.value)}
+              className="w-full rounded-md border border-input bg-background px-3 py-1 text-sm shadow-sm"
+            >
               {categories.map((category) => (
-                <div key={category} className="flex items-center">
-                  <input
-                    type="checkbox"
-                    id={`category-${category}`}
-                    className="h-4 w-4 rounded border-gray-300 text-primary focus:ring-primary"
-                    defaultChecked={category === "All"}
-                  />
-                  <label htmlFor={`category-${category}`} className="ml-2 text-sm text-neutral-dark">
-                    {category}
-                  </label>
-                </div>
+                <option key={category} value={category}>
+                  {category}
+                </option>
               ))}
-            </div>
+            </select>
           </div>
 
           <div className="bg-white p-4 rounded-lg shadow">
@@ -191,13 +145,22 @@ export default function WagersPage() {
             <div className="flex flex-col md:flex-row gap-4">
               <div className="flex-1 relative">
                 <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-neutral-dark" />
-                <Input placeholder="Search markets..." className="pl-10" />
+                <Input
+                  placeholder="Search markets..."
+                  className="pl-10"
+                  value={searchQuery}
+                  onChange={(e) => setSearchQuery(e.target.value)}
+                />
               </div>
-              <select className="rounded-md border border-input bg-background px-3 py-2 text-sm shadow-sm">
-                <option>Sort by: Newest</option>
-                <option>Sort by: Pool Size</option>
-                <option>Sort by: Participants</option>
-                <option>Sort by: Deadline (soonest)</option>
+              <select
+                className="rounded-md border border-input bg-background px-3 py-2 text-sm shadow-sm"
+                value={sortBy}
+                onChange={(e) => setSortBy(e.target.value)}
+              >
+                <option value="newest">Sort by: Newest</option>
+                <option value="poolSize">Sort by: Pool Size</option>
+                <option value="participants">Sort by: Participants</option>
+                <option value="deadline">Sort by: Deadline (soonest)</option>
               </select>
             </div>
           </div>
@@ -214,14 +177,15 @@ export default function WagersPage() {
                 Ending Soon
               </TabsTrigger>
             </TabsList>
+
             <TabsContent value="all">
               <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                {wagers.map((wager) => {
-                  const totalPool = wager.poolYes + wager.poolNo
-                  const yesPercentage = (wager.poolYes / totalPool) * 100
-                  const noPercentage = (wager.poolNo / totalPool) * 100
-                  const yesOdds = totalPool / wager.poolYes
-                  const noOdds = totalPool / wager.poolNo
+                {sortedWagers.map((wager) => {
+                  const totalPool = wager.yesPool + wager.noPool
+                  const yesPercentage = totalPool ? (wager.yesPool / totalPool) * 100 : 0
+                  const noPercentage = totalPool ? (wager.noPool / totalPool) * 100 : 0
+                  const yesOdds = wager.yesPool ? totalPool / wager.yesPool : 0
+                  const noOdds = wager.noPool ? totalPool / wager.noPool : 0
 
                   return (
                     <Card key={wager.id} className="overflow-hidden">
@@ -246,12 +210,11 @@ export default function WagersPage() {
                               <span className="font-medium text-success">Yes: {yesPercentage.toFixed(0)}%</span>
                               <span className="font-medium text-destructive">No: {noPercentage.toFixed(0)}%</span>
                             </div>
-                            <div className="flex h-2 rounded-full overflow-hidden">
+                            Virgil                            <div className="flex h-2 rounded-full overflow-hidden">
                               <div className="bg-success" style={{ width: `${yesPercentage}%` }} />
                               <div className="bg-destructive" style={{ width: `${noPercentage}%` }} />
                             </div>
                           </div>
-
                           <div className="grid grid-cols-2 gap-4 text-sm">
                             <div className="bg-neutral-light p-2 rounded">
                               <div className="text-neutral-dark">Yes Odds</div>
@@ -262,11 +225,10 @@ export default function WagersPage() {
                               <div className="font-semibold">{noOdds.toFixed(2)}x</div>
                             </div>
                           </div>
-
                           <div className="flex justify-between items-center text-sm text-neutral-dark">
                             <div className="flex items-center">
                               <Users className="h-4 w-4 mr-1" />
-                              <span>{wager.participants} participants</span>
+                              <span>{wager.participantCount} participants</span>
                             </div>
                             <div>
                               <span>Min Stake: ${wager.minStake}</span>
@@ -284,14 +246,15 @@ export default function WagersPage() {
                 })}
               </div>
             </TabsContent>
+
             <TabsContent value="trending">
               <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                {wagers.slice(3, 7).map((wager) => {
-                  const totalPool = wager.poolYes + wager.poolNo
-                  const yesPercentage = (wager.poolYes / totalPool) * 100
-                  const noPercentage = (wager.poolNo / totalPool) * 100
-                  const yesOdds = totalPool / wager.poolYes
-                  const noOdds = totalPool / wager.poolNo
+                {trendingWagers.map((wager) => {
+                  const totalPool = wager.yesPool + wager.noPool
+                  const yesPercentage = totalPool ? (wager.yesPool / totalPool) * 100 : 0
+                  const noPercentage = totalPool ? (wager.noPool / totalPool) * 100 : 0
+                  const yesOdds = wager.yesPool ? totalPool / wager.yesPool : 0
+                  const noOdds = wager.noPool ? totalPool / wager.noPool : 0
 
                   return (
                     <Card key={wager.id} className="overflow-hidden">
@@ -321,7 +284,6 @@ export default function WagersPage() {
                               <div className="bg-destructive" style={{ width: `${noPercentage}%` }} />
                             </div>
                           </div>
-
                           <div className="grid grid-cols-2 gap-4 text-sm">
                             <div className="bg-neutral-light p-2 rounded">
                               <div className="text-neutral-dark">Yes Odds</div>
@@ -332,15 +294,13 @@ export default function WagersPage() {
                               <div className="font-semibold">{noOdds.toFixed(2)}x</div>
                             </div>
                           </div>
-
-                          <div className="flex justify-between items-center text-sm">
-                            <div className="flex items-center text-neutral-dark">
+                          <div className="flex justify-between items-center text-sm text-neutral-dark">
+                            <div className="flex items-center">
                               <Users className="h-4 w-4 mr-1" />
-                              <span>{wager.participants} participants</span>
+                              <span>{wager.participantCount} participants</span>
                             </div>
-                            <div className="flex items-center text-secondary font-medium">
-                              <TrendingUp className="h-4 w-4 mr-1" />
-                              <span>+{Math.floor(Math.random() * 30 + 20)}%</span>
+                            <div>
+                              <span>Min Stake: ${wager.minStake}</span>
                             </div>
                           </div>
                         </div>
@@ -355,14 +315,15 @@ export default function WagersPage() {
                 })}
               </div>
             </TabsContent>
+
             <TabsContent value="ending-soon">
               <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                {wagers.slice(5, 9).map((wager) => {
-                  const totalPool = wager.poolYes + wager.poolNo
-                  const yesPercentage = (wager.poolYes / totalPool) * 100
-                  const noPercentage = (wager.poolNo / totalPool) * 100
-                  const yesOdds = totalPool / wager.poolYes
-                  const noOdds = totalPool / wager.poolNo
+                {endingSoonWagers.map((wager) => {
+                  const totalPool = wager.yesPool + wager.noPool
+                  const yesPercentage = totalPool ? (wager.yesPool / totalPool) * 100 : 0
+                  const noPercentage = totalPool ? (wager.noPool / totalPool) * 100 : 0
+                  const yesOdds = wager.yesPool ? totalPool / wager.yesPool : 0
+                  const noOdds = wager.noPool ? totalPool / wager.noPool : 0
 
                   return (
                     <Card key={wager.id} className="overflow-hidden">
@@ -392,7 +353,6 @@ export default function WagersPage() {
                               <div className="bg-destructive" style={{ width: `${noPercentage}%` }} />
                             </div>
                           </div>
-
                           <div className="grid grid-cols-2 gap-4 text-sm">
                             <div className="bg-neutral-light p-2 rounded">
                               <div className="text-neutral-dark">Yes Odds</div>
@@ -403,11 +363,10 @@ export default function WagersPage() {
                               <div className="font-semibold">{noOdds.toFixed(2)}x</div>
                             </div>
                           </div>
-
                           <div className="flex justify-between items-center text-sm text-neutral-dark">
                             <div className="flex items-center">
                               <Users className="h-4 w-4 mr-1" />
-                              <span>{wager.participants} participants</span>
+                              <span>{wager.participantCount} participants</span>
                             </div>
                             <div>
                               <span>Min Stake: ${wager.minStake}</span>
