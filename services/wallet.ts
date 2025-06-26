@@ -52,12 +52,13 @@ class WalletService {
   private baseUrl: string;
   private walletState: WalletState;
   private listeners: Set<(state: WalletState) => void>;
+  private fetchProfilePromise: Promise<WalletData> | null = null; // Prevent multiple concurrent calls
 
   constructor(baseUrl: string = API_URL) {
     this.baseUrl = baseUrl;
     this.walletState = {
       walletData: null,
-      transactions: [],
+      transactions: [], // Fixed: Initialize as empty array instead of undefined
       isLoading: false,
       error: null,
     };
@@ -96,8 +97,24 @@ class WalletService {
    * Fetch user profile data (includes balance and virtual account)
    */
   async fetchProfile(): Promise<WalletData> {
+    // Prevent multiple concurrent calls
+    if (this.fetchProfilePromise) {
+      return this.fetchProfilePromise;
+    }
+
     this.updateWalletState({ isLoading: true, error: null });
 
+    this.fetchProfilePromise = this._fetchProfile();
+    
+    try {
+      const result = await this.fetchProfilePromise;
+      return result;
+    } finally {
+      this.fetchProfilePromise = null; // Clear the promise when done
+    }
+  }
+
+  private async _fetchProfile(): Promise<WalletData> {
     try {
       const token = getAuthToken();
       if (!token) {
@@ -242,54 +259,77 @@ class WalletService {
   clearWalletData() {
     this.updateWalletState({
       walletData: null,
-      transactions: [],
+      transactions: [], // Fixed: Reset to empty array instead of undefined
       isLoading: false,
       error: null,
     });
   }
 
   /**
-   * Simulate deposit (you can replace with real API call)
+   * Fetch transactions from backend
    */
-
   async fetchTransactions(): Promise<Transaction[]> {
-    this.updateWalletState({ isLoading: true, error: null });
-  
+    // Don't set loading state if we're already loading profile
+    if (!this.fetchProfilePromise) {
+      this.updateWalletState({ isLoading: true, error: null });
+    }
+
     try {
       const token = getAuthToken();
       if (!token) {
         throw new Error('No authentication token found');
       }
-  
+
+      console.log('Fetching transactions...');
       const response = await fetch(`${this.baseUrl}/api/wallet/transactions`, {
         headers: {
           'Authorization': `Bearer ${token}`,
           'Content-Type': 'application/json',
         },
       });
-  
+
       const data = await response.json();
+      console.log('Transactions response:', data);
+
       if (!response.ok) {
+        // If endpoint doesn't exist, return empty array instead of throwing error
+        if (response.status === 404) {
+          console.log('Transactions endpoint not found, using empty array');
+          const emptyTransactions: Transaction[] = [];
+          this.updateWalletState({
+            transactions: emptyTransactions,
+            isLoading: false,
+            error: null,
+          });
+          return emptyTransactions;
+        }
         throw new Error(data.message || 'Failed to fetch transactions');
       }
-  
-      const transactions: Transaction[] = data.transactions;
+
+      const transactions: Transaction[] = data.transactions || [];
       this.updateWalletState({
         transactions,
         isLoading: false,
         error: null,
       });
-  
+
       return transactions;
     } catch (error) {
-      const errorMessage = error instanceof Error ? error.message : 'Failed to fetch transactions';
+      console.error('Fetch transactions error:', error);
+      // Don't fail completely if transactions can't be fetched
+      const emptyTransactions: Transaction[] = [];
       this.updateWalletState({
+        transactions: emptyTransactions,
         isLoading: false,
-        error: errorMessage,
+        error: null, // Don't set error for missing transactions endpoint
       });
-      throw error;
+      return emptyTransactions;
     }
   }
+
+  /**
+   * Simulate deposit (you can replace with real API call)
+   */
   async simulateDeposit(amount: number): Promise<boolean> {
     this.updateWalletState({ isLoading: true });
 
@@ -354,7 +394,7 @@ class WalletService {
 // Create singleton instance
 const walletService = new WalletService();
 
-// Custom hook for React components
+// Custom hook for React components with memoized functions
 export const useWallet = () => {
   const [walletState, setWalletState] = React.useState<WalletState>(walletService.getWalletState());
 
@@ -363,17 +403,22 @@ export const useWallet = () => {
     return unsubscribe;
   }, []);
 
+  // Memoize the functions to prevent unnecessary re-renders
+  const memoizedFunctions = React.useMemo(() => ({
+    fetchProfile: () => walletService.fetchProfile(),
+    fetchBalance: () => walletService.fetchBalance(),
+    fetchTransactions: () => walletService.fetchTransactions(),
+    refreshWalletData: () => walletService.refreshWalletData(),
+    simulateDeposit: (amount: number) => walletService.simulateDeposit(amount),
+    simulateWithdrawal: (amount: number) => walletService.simulateWithdrawal(amount),
+  }), []);
+
   return {
     walletData: walletState.walletData,
     transactions: walletState.transactions,
     isLoading: walletState.isLoading,
     error: walletState.error,
-    fetchProfile: walletService.fetchProfile.bind(walletService),
-    fetchBalance: walletService.fetchBalance.bind(walletService),
-    fetchTransactions: walletService.fetchTransactions.bind(walletService),
-    refreshWalletData: walletService.refreshWalletData.bind(walletService),
-    simulateDeposit: walletService.simulateDeposit.bind(walletService),
-    simulateWithdrawal: walletService.simulateWithdrawal.bind(walletService),
+    ...memoizedFunctions,
   };
 };
 

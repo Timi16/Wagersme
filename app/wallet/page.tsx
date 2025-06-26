@@ -1,6 +1,6 @@
 "use client"
 
-import { useState, useEffect } from "react"
+import { useState, useEffect, useRef } from "react"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card"
 import { Input } from "@/components/ui/input"
@@ -41,17 +41,28 @@ export default function WalletPage() {
     simulateWithdrawal 
   } = useWallet()
 
+  // Use ref to track if data has been loaded to prevent multiple calls
+  const hasLoadedData = useRef(false)
+
   // Load wallet data and transactions when component mounts or user changes
   useEffect(() => {
-    if (isAuthenticated && user) {
+    if (isAuthenticated && user && !hasLoadedData.current) {
+      hasLoadedData.current = true
+      
       Promise.all([
         fetchProfile(),
         fetchTransactions()
       ]).catch((err) => {
         console.error('Failed to load wallet data or transactions:', err)
+        hasLoadedData.current = false // Reset on error so it can retry
       })
     }
-  }, [isAuthenticated, user, fetchProfile, fetchTransactions])
+    
+    // Reset the flag when user changes or logs out
+    if (!isAuthenticated || !user) {
+      hasLoadedData.current = false
+    }
+  }, [isAuthenticated, user]) // Remove fetchProfile and fetchTransactions from dependencies
 
   const handleDeposit = async () => {
     if (!depositAmount || Number.parseFloat(depositAmount) <= 0) {
@@ -122,12 +133,15 @@ export default function WalletPage() {
 
   const handleRefresh = async () => {
     try {
+      hasLoadedData.current = false // Reset flag to allow fresh data load
       await Promise.all([refreshWalletData(), fetchTransactions()])
+      hasLoadedData.current = true
       toast({
         title: "Wallet refreshed",
         description: "Your wallet data has been updated.",
       })
     } catch (error) {
+      hasLoadedData.current = false
       toast({
         title: "Refresh failed",
         description: "Could not refresh wallet data.",
@@ -161,6 +175,7 @@ export default function WalletPage() {
     }
   }
 
+  // Show loading state only when initially loading and no data exists
   if (isLoading && !walletData) {
     return (
       <div className="container mx-auto px-4 py-8">
@@ -172,6 +187,7 @@ export default function WalletPage() {
     )
   }
 
+  // Show error state only if there's an error and no existing data
   if (error && !walletData) {
     return (
       <div className="container mx-auto px-4 py-8">
@@ -189,6 +205,7 @@ export default function WalletPage() {
   const balance = walletData?.balance || 0
   const pendingWinnings = walletData?.pendingWinnings || 0
   const virtualAccount = walletData?.virtualAccount
+  const transactionList = transactions || [] // Ensure transactions is always an array
 
   return (
     <div className="container mx-auto px-4 py-8">
@@ -404,8 +421,8 @@ export default function WalletPage() {
                   <RefreshCw className="h-6 w-6 animate-spin" />
                   <span className="ml-2">Loading transactions...</span>
                 </div>
-              ) : transactions.length > 0 ? (
-                transactions.map((transaction) => (
+              ) : transactionList.length > 0 ? (
+                transactionList.map((transaction) => (
                   <div key={transaction.id} className="flex items-center justify-between p-3 border-b last:border-0">
                     <div className="flex items-center">
                       <div className="mr-4">{getTransactionIcon(transaction.type)}</div>

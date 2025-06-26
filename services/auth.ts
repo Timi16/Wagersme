@@ -9,14 +9,17 @@ interface SignupRequest {
 }
 
 interface SignupResponse {
-  id: number;
-  username: string;
-  email: string;
-  token?: string;
-  customerCode?: string;
-  virtualAccountNumber?: string;
-  virtualAccountBank?: string;
-  virtualAccountName?: string;
+  message: string;
+  user: {
+    id: number;
+    username: string;
+    email: string;
+    customerCode?: string;
+    virtualAccountNumber?: string;
+    virtualAccountBank?: string;
+    virtualAccountName?: string;
+  };
+  token?: string; // Add token field
 }
 
 interface AuthError {
@@ -198,46 +201,46 @@ class AuthService {
         throw new Error(data.message || 'Signup failed');
       }
 
-      // If signup includes a token, store it and update auth state
-      if (data.token) {
+      // Fixed: Handle the actual response structure from your backend
+      const token = data.token; // Check if token is directly in response
+      const user = data.user;
+
+      if (token) {
         console.log('Token received from signup, storing and authenticating user');
         const localStorage = getLocalStorage();
-        localStorage?.setItem('auth_token', data.token);
+        localStorage?.setItem('auth_token', token);
         
         // Update auth state with user data
         this.updateAuthState({
           user: {
-            id: data.id,
-            username: data.username,
-            email: data.email,
+            id: user.id,
+            username: user.username,
+            email: user.email,
           },
           isAuthenticated: true,
           isLoading: false,
         });
 
         // Store virtual account data in wallet service
-        if (data.virtualAccountNumber && data.virtualAccountBank) {
+        if (user.virtualAccountNumber && user.virtualAccountBank) {
           console.log('Storing virtual account data:', {
-            accountNumber: data.virtualAccountNumber,
-            bankName: data.virtualAccountBank,
-            accountName: data.virtualAccountName,
+            accountNumber: user.virtualAccountNumber,
+            bankName: user.virtualAccountBank,
+            accountName: user.virtualAccountName || user.username,
           });
           
           walletService.storeVirtualAccountData({
-            accountNumber: data.virtualAccountNumber,
-            bankName: data.virtualAccountBank,
-            accountName: data.virtualAccountName || data.username,
+            accountNumber: user.virtualAccountNumber,
+            bankName: user.virtualAccountBank,
+            accountName: user.virtualAccountName || user.username,
           });
         }
 
-        // Fetch full profile data (including balance)
-        try {
-          await walletService.fetchProfile();
-        } catch (error) {
+        // Fetch full profile data (including balance) - but don't await to prevent blocking
+        walletService.fetchProfile().catch(error => {
           console.log('Could not load wallet data after signup:', error);
-        }
+        });
       } else {
-        // If no token returned, just stop loading
         console.log('No token received from signup');
         this.updateAuthState({ isLoading: false });
       }
@@ -317,9 +320,9 @@ class AuthService {
       }
 
       const user = {
-        id: data.id,
-        username: data.username,
-        email: data.email,
+        id: data.id || data.user?.id,
+        username: data.username || data.user?.username,
+        email: data.email || data.user?.email,
       };
 
       this.updateAuthState({
@@ -328,12 +331,10 @@ class AuthService {
         isLoading: false,
       });
 
-      // Load wallet data after successful sign in
-      try {
-        await walletService.fetchProfile();
-      } catch (error) {
+      // Load wallet data after successful sign in - but don't await to prevent blocking
+      walletService.fetchProfile().catch(error => {
         console.log('Could not load wallet data after sign in:', error);
-      }
+      });
 
       return user;
     } catch (error) {
