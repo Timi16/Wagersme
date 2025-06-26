@@ -1,3 +1,6 @@
+"use client"
+
+import { useWager } from "@/hooks/useWagers"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
@@ -8,28 +11,27 @@ import { WagerDiscussion } from "@/components/wager-discussion"
 import { Clock, Users, DollarSign, AlertCircle, Share2 } from "lucide-react"
 
 export default function WagerDetailPage({ params }: { params: { id: string } }) {
-  // In a real app, we would fetch the wager data based on the ID
-  const wager = {
-    id: params.id,
-    title: "Will Bitcoin exceed $100,000 by end of 2025?",
-    description:
-      "This market will resolve to YES if the price of Bitcoin (BTC) exceeds $100,000 USD on any major exchange (Coinbase, Binance, Kraken) before or on December 31st, 2025, 23:59:59 UTC. It will resolve to NO if the price does not reach $100,000 by this deadline.\n\nPrice must be maintained for at least 1 hour to be considered valid. Screenshots and multiple reliable sources will be used for verification.",
-    category: "Crypto",
-    deadline: "Dec 31, 2025",
-    poolYes: 12500,
-    poolNo: 7500,
-    participants: 156,
-    minStake: 5,
-    maxStake: 1000,
-    createdBy: "CryptoVisionary",
-    createdAt: "May 15, 2024",
+  const { wager, loading, error } = useWager(Number(params.id))
+
+  if (loading) {
+    return <div className="container mx-auto px-4 py-8">Loading...</div>
   }
 
-  const totalPool = wager.poolYes + wager.poolNo
-  const yesPercentage = (wager.poolYes / totalPool) * 100
-  const noPercentage = (wager.poolNo / totalPool) * 100
-  const yesOdds = totalPool / wager.poolYes
-  const noOdds = totalPool / wager.poolNo
+  if (error) {
+    return <div className="container mx-auto px-4 py-8">Error: {error}</div>
+  }
+
+  if (!wager) {
+    return <div className="container mx-auto px-4 py-8">Wager not found</div>
+  }
+
+  const yesPool = wager.yesPool ?? 0
+  const noPool = wager.noPool ?? 0
+  const totalPool = yesPool + noPool
+  const yesPercentage = totalPool > 0 ? (yesPool / totalPool) * 100 : 0
+  const noPercentage = totalPool > 0 ? (noPool / totalPool) * 100 : 0
+  const yesOdds = yesPool > 0 ? totalPool / yesPool : 0
+  const noOdds = noPool > 0 ? totalPool / noPool : 0
   const platformFee = totalPool * 0.1 // 10% fee
 
   return (
@@ -41,7 +43,7 @@ export default function WagerDetailPage({ params }: { params: { id: string } }) 
               <Badge className="bg-primary hover:bg-primary">{wager.category}</Badge>
               <div className="flex items-center text-sm text-neutral-dark">
                 <Clock className="h-4 w-4 mr-1" />
-                <span>Deadline: {wager.deadline}</span>
+                <span>Deadline: {new Date(wager.deadline).toLocaleDateString()}</span>
               </div>
             </div>
 
@@ -54,7 +56,7 @@ export default function WagerDetailPage({ params }: { params: { id: string } }) 
             <div className="flex flex-wrap gap-4 text-sm text-neutral-dark">
               <div className="flex items-center">
                 <Users className="h-4 w-4 mr-1" />
-                <span>{wager.participants} participants</span>
+                <span>{wager.participantCount} participants</span>
               </div>
               <div className="flex items-center">
                 <DollarSign className="h-4 w-4 mr-1" />
@@ -62,7 +64,7 @@ export default function WagerDetailPage({ params }: { params: { id: string } }) 
               </div>
               <div>
                 <span>
-                  Created by {wager.createdBy} on {wager.createdAt}
+                  Created by {wager.creator.username} on {new Date(wager.createdAt).toLocaleDateString()}
                 </span>
               </div>
             </div>
@@ -75,10 +77,10 @@ export default function WagerDetailPage({ params }: { params: { id: string } }) 
               <TabsTrigger value="rules">Rules & Resolution</TabsTrigger>
             </TabsList>
             <TabsContent value="activity">
-              <WagerActivity wagerId={wager.id} />
+              <WagerActivity wagerId={wager.id.toString()} />
             </TabsContent>
             <TabsContent value="discussion">
-              <WagerDiscussion wagerId={wager.id} />
+              <WagerDiscussion wagerId={wager.id.toString()} />
             </TabsContent>
             <TabsContent value="rules">
               <Card>
@@ -120,7 +122,7 @@ export default function WagerDetailPage({ params }: { params: { id: string } }) 
           <Card className="border-t-4 border-t-primary">
             <CardHeader>
               <CardTitle>Current Odds</CardTitle>
-              <CardDescription>Based on {wager.participants} participants</CardDescription>
+              <CardDescription>Based on {wager.participantCount} participants</CardDescription>
             </CardHeader>
             <CardContent className="space-y-6">
               <div>
@@ -137,12 +139,12 @@ export default function WagerDetailPage({ params }: { params: { id: string } }) 
               <div className="grid grid-cols-2 gap-4">
                 <div className="bg-neutral-light p-4 rounded-md">
                   <div className="text-sm text-neutral-dark">Yes Pool</div>
-                  <div className="text-xl font-bold">${wager.poolYes.toLocaleString()}</div>
+                  <div className="text-xl font-bold">${yesPool.toLocaleString()}</div>
                   <div className="text-sm font-medium text-success">Odds: {yesOdds.toFixed(2)}x</div>
                 </div>
                 <div className="bg-neutral-light p-4 rounded-md">
                   <div className="text-sm text-neutral-dark">No Pool</div>
-                  <div className="text-xl font-bold">${wager.poolNo.toLocaleString()}</div>
+                  <div className="text-xl font-bold">${noPool.toLocaleString()}</div>
                   <div className="text-sm font-medium text-destructive">Odds: {noOdds.toFixed(2)}x</div>
                 </div>
               </div>
@@ -165,9 +167,9 @@ export default function WagerDetailPage({ params }: { params: { id: string } }) 
           </Card>
 
           <PlaceBetForm
-            wagerId={wager.id}
-            minStake={wager.minStake}
-            maxStake={wager.maxStake}
+            wagerId={wager.id.toString()}
+            minStake={wager.minStake ?? 0}
+            maxStake={wager.maxStake ?? Infinity}
             yesOdds={yesOdds}
             noOdds={noOdds}
           />
