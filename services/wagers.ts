@@ -13,6 +13,8 @@ export interface Wager {
     participantCount: number;
     yesCount: number;
     noCount: number;
+    yesPool?: number;
+    noPool?: number;
     status: 'active' | 'closed' | 'resolved' | 'cancelled';
     result?: 'yes' | 'no' | 'cancelled';
     createdBy: number;
@@ -23,7 +25,7 @@ export interface Wager {
       id: number;
       username: string;
     };
-  }
+}
   
   export interface CreateWagerData {
     title: string;

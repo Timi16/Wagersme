@@ -181,11 +181,11 @@ export default function WagersPage() {
             <TabsContent value="all">
               <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                 {sortedWagers.map((wager) => {
-                  const totalPool = wager.yesPool + wager.noPool
-                  const yesPercentage = totalPool ? (wager.yesPool / totalPool) * 100 : 0
-                  const noPercentage = totalPool ? (wager.noPool / totalPool) * 100 : 0
-                  const yesOdds = wager.yesPool ? totalPool / wager.yesPool : 0
-                  const noOdds = wager.noPool ? totalPool / wager.noPool : 0
+                  const totalPool = (wager.yesPool ?? 0) + (wager.noPool ?? 0);
+                  const yesPercentage = totalPool ? ((wager.yesPool ?? 0) / totalPool) * 100 : 0;
+                  const noPercentage = totalPool ? ((wager.noPool ?? 0) / totalPool) * 100 : 0;
+                  const yesOdds = (wager.yesPool ?? 0) > 0 ? totalPool / (wager.yesPool ?? 0) : 0;
+                  const noOdds = (wager.noPool ?? 0) > 0 ? totalPool / (wager.noPool ?? 0) : 0;
 
                   return (
                     <Card key={wager.id} className="overflow-hidden">
@@ -250,11 +250,11 @@ export default function WagersPage() {
             <TabsContent value="trending">
               <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                 {trendingWagers.map((wager) => {
-                  const totalPool = wager.yesPool + wager.noPool
-                  const yesPercentage = totalPool ? (wager.yesPool / totalPool) * 100 : 0
-                  const noPercentage = totalPool ? (wager.noPool / totalPool) * 100 : 0
-                  const yesOdds = wager.yesPool ? totalPool / wager.yesPool : 0
-                  const noOdds = wager.noPool ? totalPool / wager.noPool : 0
+                  const totalPool = (wager.yesPool ?? 0) + (wager.noPool ?? 0);
+                  const yesPercentage = totalPool ? ((wager.yesPool ?? 0) / totalPool) * 100 : 0;
+                  const noPercentage = totalPool ? ((wager.noPool ?? 0) / totalPool) * 100 : 0;
+                  const yesOdds = (wager.yesPool ?? 0) > 0 ? totalPool / (wager.yesPool ?? 0) : 0;
+                  const noOdds = (wager.noPool ?? 0) > 0 ? totalPool / (wager.noPool ?? 0) : 0;
 
                   return (
                     <Card key={wager.id} className="overflow-hidden">
@@ -319,11 +319,11 @@ export default function WagersPage() {
             <TabsContent value="ending-soon">
               <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                 {endingSoonWagers.map((wager) => {
-                  const totalPool = wager.yesPool + wager.noPool
-                  const yesPercentage = totalPool ? (wager.yesPool / totalPool) * 100 : 0
-                  const noPercentage = totalPool ? (wager.noPool / totalPool) * 100 : 0
-                  const yesOdds = wager.yesPool ? totalPool / wager.yesPool : 0
-                  const noOdds = wager.noPool ? totalPool / wager.noPool : 0
+                  const totalPool = (wager.yesPool ?? 0) + (wager.noPool ?? 0);
+                  const yesPercentage = totalPool ? ((wager.yesPool ?? 0) / totalPool) * 100 : 0;
+                  const noPercentage = totalPool ? ((wager.noPool ?? 0) / totalPool) * 100 : 0;
+                  const yesOdds = (wager.yesPool ?? 0) > 0 ? totalPool / (wager.yesPool ?? 0) : 0;
+                  const noOdds = (wager.noPool ?? 0) > 0 ? totalPool / (wager.noPool ?? 0) : 0;
 
                   return (
                     <Card key={wager.id} className="overflow-hidden">
