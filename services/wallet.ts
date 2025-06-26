@@ -122,7 +122,7 @@ class WalletService {
       }
 
       console.log('Fetching user profile...');
-      const response = await fetch(`${this.baseUrl}/api/auth/profile`, {
+      const response = await fetch(`${this.baseUrl}/auth/profile`, {
         headers: {
           'Authorization': `Bearer ${token}`,
           'Content-Type': 'application/json',
@@ -175,7 +175,7 @@ class WalletService {
       }
 
       console.log('Fetching user balance...');
-      const response = await fetch(`${this.baseUrl}/api/auth/balance`, {
+      const response = await fetch(`${this.baseUrl}/auth/balance`, {
         headers: {
           'Authorization': `Bearer ${token}`,
           'Content-Type': 'application/json',
@@ -281,7 +281,7 @@ class WalletService {
       }
 
       console.log('Fetching transactions...');
-      const response = await fetch(`${this.baseUrl}/api/wallet/transactions`, {
+      const response = await fetch(`${this.baseUrl}/wallet/transactions`, {
         headers: {
           'Authorization': `Bearer ${token}`,
           'Content-Type': 'application/json',
