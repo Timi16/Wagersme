@@ -12,7 +12,8 @@ import { Textarea } from "@/components/ui/textarea"
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { useToast } from "@/hooks/use-toast"
-import { useAuth } from "@/hooks/use-auth"
+import { useAuthService } from "@/services/auth"
+import wagersService, { CreateWagerData } from "@/services/wagers"
 import { ChevronRight, ChevronLeft, Calendar, DollarSign, Tag, Clock } from "lucide-react"
 
 export default function CreateWagerPage() {
@@ -22,14 +23,14 @@ export default function CreateWagerPage() {
     description: "",
     category: "",
     deadline: "",
-    stakeType: "fixed",
+    stakeType: "fixed" as "fixed" | "open",
     minStake: "5",
     maxStake: "100",
     customTags: "",
   })
   const [isSubmitting, setIsSubmitting] = useState(false)
   const { toast } = useToast()
-  const { user } = useAuth()
+  const { user, isAuthenticated } = useAuthService()
   const router = useRouter()
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
@@ -42,7 +43,7 @@ export default function CreateWagerPage() {
   }
 
   const handleRadioChange = (name: string, value: string) => {
-    setFormData((prev) => ({ ...prev, [name]: value }))
+    setFormData((prev) => ({ ...prev, [name]: value as "fixed" | "open" }))
   }
 
   const handleNext = () => {
@@ -89,10 +90,10 @@ export default function CreateWagerPage() {
     setStep((prev) => prev - 1)
   }
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
 
-    if (!user) {
+    if (!isAuthenticated || !user) {
       toast({
         title: "Authentication required",
         description: "Please log in to create a wager.",
@@ -133,15 +134,47 @@ export default function CreateWagerPage() {
 
     setIsSubmitting(true)
 
-    // Simulate API call
-    setTimeout(() => {
+    try {
+      // Prepare the data for the API
+      const wagerData: CreateWagerData = {
+        title: formData.title.trim(),
+        description: formData.description.trim(),
+        category: formData.category,
+        deadline: formData.deadline,
+        stakeType: formData.stakeType,
+        tags: formData.customTags 
+          ? formData.customTags.split(',').map(tag => tag.trim()).filter(tag => tag)
+          : [],
+      }
+
+      // Add stake information based on type
+      if (formData.stakeType === "fixed") {
+        wagerData.fixedStake = Number.parseFloat(formData.minStake)
+      } else {
+        wagerData.minStake = Number.parseFloat(formData.minStake)
+        wagerData.maxStake = Number.parseFloat(formData.maxStake)
+      }
+
+      // Call the wagersService to create the wager
+      const response = await wagersService.createWager(wagerData)
+
       toast({
         title: "Wager created successfully!",
         description: "Your prediction market is now live.",
       })
+
+      // Redirect to the newly created wager or wagers list
+      router.push(`/wagers/${response.wager.id}`)
+    } catch (error) {
+      console.error('Failed to create wager:', error)
+      toast({
+        title: "Failed to create wager",
+        description: error instanceof Error ? error.message : "An unexpected error occurred.",
+        variant: "destructive",
+      })
+    } finally {
       setIsSubmitting(false)
-      router.push("/wagers")
-    }, 1500)
+    }
   }
 
   const renderStepContent = () => {
@@ -195,10 +228,10 @@ export default function CreateWagerPage() {
                   <SelectItem value="crypto">Crypto</SelectItem>
                   <SelectItem value="entertainment">Entertainment</SelectItem>
                   <SelectItem value="science">Science</SelectItem>
-                  <SelectItem value="technology">Technology</SelectItem>
+                  <SelectItem value="tech">Technology</SelectItem>
                   <SelectItem value="finance">Finance</SelectItem>
-                  <SelectItem value="trivia">Trivia</SelectItem>
-                  <SelectItem value="custom">Custom</SelectItem>
+                  <SelectItem value="weather">Weather</SelectItem>
+                  <SelectItem value="other">Other</SelectItem>
                 </SelectContent>
               </Select>
             </div>
@@ -253,7 +286,7 @@ export default function CreateWagerPage() {
                   <div className="flex items-center space-x-2">
                     <RadioGroupItem value="fixed" id="fixed-stake" />
                     <div>
-                      <p className="font-medium">Fixed Minimum Stake</p>
+                      <p className="font-medium">Fixed Stake</p>
                       <p className="text-sm text-neutral-dark">All participants must bet the same amount</p>
                     </div>
                   </div>
@@ -277,7 +310,7 @@ export default function CreateWagerPage() {
 
             {formData.stakeType === "fixed" ? (
               <div className="space-y-2">
-                <Label htmlFor="minStake">Fixed Stake Amount ($)</Label>
+                <Label htmlFor="minStake">Fixed Stake Amount (₦)</Label>
                 <div className="relative">
                   <div className="absolute inset-y-0 left-0 flex items-center pl-3 pointer-events-none">
                     <DollarSign className="h-4 w-4 text-neutral-dark" />
@@ -298,7 +331,7 @@ export default function CreateWagerPage() {
             ) : (
               <div className="grid grid-cols-2 gap-4">
                 <div className="space-y-2">
-                  <Label htmlFor="minStake">Minimum Stake ($)</Label>
+                  <Label htmlFor="minStake">Minimum Stake (₦)</Label>
                   <div className="relative">
                     <div className="absolute inset-y-0 left-0 flex items-center pl-3 pointer-events-none">
                       <DollarSign className="h-4 w-4 text-neutral-dark" />
@@ -316,7 +349,7 @@ export default function CreateWagerPage() {
                   </div>
                 </div>
                 <div className="space-y-2">
-                  <Label htmlFor="maxStake">Maximum Stake ($)</Label>
+                  <Label htmlFor="maxStake">Maximum Stake (₦)</Label>
                   <div className="relative">
                     <div className="absolute inset-y-0 left-0 flex items-center pl-3 pointer-events-none">
                       <DollarSign className="h-4 w-4 text-neutral-dark" />
@@ -344,7 +377,7 @@ export default function CreateWagerPage() {
                 <div>
                   <h4 className="font-medium">Platform Fee</h4>
                   <p className="text-sm text-neutral-dark mt-1">
-                    BetWise charges a 10% fee on the total pool, which is deducted before payouts are distributed to
+                    Wagerme charges a 10% fee on the total pool, which is deducted before payouts are distributed to
                     winners.
                   </p>
                 </div>
@@ -378,10 +411,10 @@ export default function CreateWagerPage() {
                 <div>
                   <h4 className="font-medium">Stake Details</h4>
                   {formData.stakeType === "fixed" ? (
-                    <p className="mt-1">Fixed stake: ${formData.minStake}</p>
+                    <p className="mt-1">Fixed stake: ₦{formData.minStake}</p>
                   ) : (
                     <p className="mt-1">
-                      Open stake: ${formData.minStake} - ${formData.maxStake}
+                      Open stake: ₦{formData.minStake} - ₦{formData.maxStake}
                     </p>
                   )}
                 </div>
@@ -464,7 +497,7 @@ export default function CreateWagerPage() {
 
         <Card>
           <CardContent className="pt-6">
-            <form onSubmit={(e) => e.preventDefault()}>
+            <form onSubmit={handleSubmit}>
               {renderStepContent()}
 
               <div className="flex justify-between mt-8">
@@ -489,8 +522,7 @@ export default function CreateWagerPage() {
                   </Button>
                 ) : (
                   <Button
-                    type="button"
-                    onClick={handleSubmit}
+                    type="submit"
                     disabled={isSubmitting}
                     className="bg-accent hover:bg-accent-dark"
                   >

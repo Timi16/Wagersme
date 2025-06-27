@@ -75,14 +75,37 @@ class AuthService {
   }
 
   /**
+   * Get the stored token
+   */
+  getToken(): string | null {
+    const localStorage = getLocalStorage();
+    return localStorage?.getItem('auth_token') || null;
+  }
+
+  /**
+   * Set the token in storage
+   */
+  setToken(token: string): void {
+    const localStorage = getLocalStorage();
+    localStorage?.setItem('auth_token', token);
+  }
+
+  /**
+   * Remove the token from storage
+   */
+  removeToken(): void {
+    const localStorage = getLocalStorage();
+    localStorage?.removeItem('auth_token');
+  }
+
+  /**
    * Initialize authentication from stored token
    */
   private async initializeAuth() {
     if (this.isInitialized) return;
     
     try {
-      const localStorage = getLocalStorage();
-      const token = localStorage?.getItem('auth_token');
+      const token = this.getToken();
       
       if (token) {
         console.log('Found stored token, verifying...');
@@ -104,7 +127,7 @@ class AuthService {
           }
         } else {
           console.log('Token verification failed, clearing token');
-          localStorage?.removeItem('auth_token');
+          this.removeToken();
         }
       } else {
         console.log('No stored token found');
@@ -112,8 +135,7 @@ class AuthService {
     } catch (error) {
       console.error('Auth initialization error:', error);
       // Clear invalid token
-      const localStorage = getLocalStorage();
-      localStorage?.removeItem('auth_token');
+      this.removeToken();
     } finally {
       this.isInitialized = true;
     }
@@ -201,16 +223,13 @@ class AuthService {
         throw new Error(data.message || 'Signup failed');
       }
 
-      // Fixed: Handle the actual response structure from your backend
-      const token = data.token; // Check if token is directly in response
+      const token = data.token;
       const user = data.user;
 
       if (token) {
         console.log('Token received from signup, storing and authenticating user');
-        const localStorage = getLocalStorage();
-        localStorage?.setItem('auth_token', token);
+        this.setToken(token);
         
-        // Update auth state with user data
         this.updateAuthState({
           user: {
             id: user.id,
@@ -221,7 +240,6 @@ class AuthService {
           isLoading: false,
         });
 
-        // Store virtual account data in wallet service
         if (user.virtualAccountNumber && user.virtualAccountBank) {
           console.log('Storing virtual account data:', {
             accountNumber: user.virtualAccountNumber,
@@ -236,7 +254,6 @@ class AuthService {
           });
         }
 
-        // Fetch full profile data (including balance) - but don't await to prevent blocking
         walletService.fetchProfile().catch(error => {
           console.log('Could not load wallet data after signup:', error);
         });
@@ -258,9 +275,7 @@ class AuthService {
    */
   async signOut() {
     try {
-      // Call backend to invalidate token
-      const localStorage = getLocalStorage();
-      const token = localStorage?.getItem('auth_token');
+      const token = this.getToken();
       
       if (token) {
         console.log('Signing out, invalidating token');
@@ -274,17 +289,14 @@ class AuthService {
     } catch (error) {
       console.error('Signout error:', error);
     } finally {
-      // Clear local storage and update state
       console.log('Clearing auth state and local storage');
-      const localStorage = getLocalStorage();
-      localStorage?.removeItem('auth_token');
+      this.removeToken();
       this.updateAuthState({
         user: null,
         isAuthenticated: false,
         isLoading: false,
       });
 
-      // Clear wallet data
       walletService.clearWalletData();
     }
   }
@@ -312,11 +324,9 @@ class AuthService {
         throw new Error(data.message || 'Sign in failed');
       }
 
-      // Store token and update auth state
       if (data.token) {
         console.log('Token received from sign in, storing');
-        const localStorage = getLocalStorage();
-        localStorage?.setItem('auth_token', data.token);
+        this.setToken(data.token);
       }
 
       const user = {
@@ -331,7 +341,6 @@ class AuthService {
         isLoading: false,
       });
 
-      // Load wallet data after successful sign in - but don't await to prevent blocking
       walletService.fetchProfile().catch(error => {
         console.log('Could not load wallet data after sign in:', error);
       });
@@ -371,17 +380,13 @@ class AuthService {
   }
 }
 
-// Create singleton instance
 const authService = new AuthService();
 
-// Custom hook for React components
 export const useAuthService = () => {
   const [authState, setAuthState] = React.useState<AuthState>(authService.getAuthState());
 
   React.useEffect(() => {
-    // Ensure initialization on client side
     authService.ensureInitialized();
-    
     const unsubscribe = authService.subscribe(setAuthState);
     return unsubscribe;
   }, []);
@@ -397,13 +402,11 @@ export const useAuthService = () => {
   };
 };
 
-// Export functions for easy use (backward compatibility)
 export const signup = (userData: SignupRequest) => authService.signup(userData);
 export const validateSignupData = (userData: SignupRequest) => authService.validateSignupData(userData);
 export const signIn = (email: string, password: string) => authService.signIn(email, password);
 export const signOut = () => authService.signOut();
 
-// Export types and service
 export type { SignupRequest, SignupResponse, AuthError, User, AuthState };
 export { AuthService };
 export default authService;

@@ -1,3 +1,4 @@
+import authService from './auth';
 export interface Wager {
     id: number;
     title: string;
@@ -64,7 +65,7 @@ export interface Wager {
   
   class WagersService {
     private getAuthHeaders(): HeadersInit {
-      const token = localStorage.getItem('token');
+      const token = authService.getToken();
       return {
         'Content-Type': 'application/json',
         ...(token && { Authorization: `Bearer ${token}` }),
