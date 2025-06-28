@@ -9,15 +9,18 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { Switch } from "@/components/ui/switch"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Textarea } from "@/components/ui/textarea"
-import { useToast } from "@/hooks/use-toast"
-import { useAuth } from "@/hooks/use-auth"
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 import { Badge } from "@/components/ui/badge"
 import { User, Shield, Bell, Globe, Eye, EyeOff, Camera, Trash2, AlertTriangle } from "lucide-react"
 
 export default function SettingsPage() {
-  const { user } = useAuth()
-  const { toast } = useToast()
+  // Mock user data
+  const user = { name: "John Doe", email: "john@example.com", kycVerified: true }
+  
+  // Mock toast function
+  const toast = ({ title, description, variant }: { title: string; description: string; variant?: "default" | "destructive" }) => {
+    console.log(`${title}: ${description}`)
+  }
 
   // Profile settings
   const [name, setName] = useState(user?.name || "")
@@ -122,30 +125,31 @@ export default function SettingsPage() {
   }
 
   return (
-    <div className="container mx-auto px-4 py-8">
+    <div className="container mx-auto px-4 py-4 sm:py-8">
       <div className="max-w-4xl mx-auto">
-        <div className="mb-8">
-          <h1 className="text-3xl font-bold text-primary">Settings</h1>
-          <p className="text-neutral-dark mt-1">Manage your account settings and preferences</p>
+        <div className="mb-6 sm:mb-8">
+          <h1 className="text-2xl sm:text-3xl font-bold text-blue-600">Settings</h1>
+          <p className="text-gray-600 mt-1 text-sm sm:text-base">Manage your account settings and preferences</p>
         </div>
 
         <Tabs defaultValue="profile" className="w-full">
-          <TabsList className="grid grid-cols-4 mb-8">
-            <TabsTrigger value="profile" className="flex items-center">
-              <User className="h-4 w-4 mr-2" />
-              Profile
+          {/* Responsive TabsList - stacked on mobile, grid on larger screens */}
+          <TabsList className="grid grid-cols-2 sm:grid-cols-4 w-full mb-6 sm:mb-8 h-auto">
+            <TabsTrigger value="profile" className="flex items-center justify-center p-2 sm:p-3 text-xs sm:text-sm">
+              <User className="h-3 w-3 sm:h-4 sm:w-4 mr-1 sm:mr-2" />
+              <span className="hidden xs:inline">Profile</span>
             </TabsTrigger>
-            <TabsTrigger value="security" className="flex items-center">
-              <Shield className="h-4 w-4 mr-2" />
-              Security
+            <TabsTrigger value="security" className="flex items-center justify-center p-2 sm:p-3 text-xs sm:text-sm">
+              <Shield className="h-3 w-3 sm:h-4 sm:w-4 mr-1 sm:mr-2" />
+              <span className="hidden xs:inline">Security</span>
             </TabsTrigger>
-            <TabsTrigger value="notifications" className="flex items-center">
-              <Bell className="h-4 w-4 mr-2" />
-              Notifications
+            <TabsTrigger value="notifications" className="flex items-center justify-center p-2 sm:p-3 text-xs sm:text-sm">
+              <Bell className="h-3 w-3 sm:h-4 sm:w-4 mr-1 sm:mr-2" />
+              <span className="hidden xs:inline">Notifications</span>
             </TabsTrigger>
-            <TabsTrigger value="preferences" className="flex items-center">
-              <Globe className="h-4 w-4 mr-2" />
-              Preferences
+            <TabsTrigger value="preferences" className="flex items-center justify-center p-2 sm:p-3 text-xs sm:text-sm">
+              <Globe className="h-3 w-3 sm:h-4 sm:w-4 mr-1 sm:mr-2" />
+              <span className="hidden xs:inline">Preferences</span>
             </TabsTrigger>
           </TabsList>
 
@@ -153,76 +157,81 @@ export default function SettingsPage() {
             <div className="space-y-6">
               <Card>
                 <CardHeader>
-                  <CardTitle>Profile Information</CardTitle>
-                  <CardDescription>Update your personal information and profile details</CardDescription>
+                  <CardTitle className="text-lg sm:text-xl">Profile Information</CardTitle>
+                  <CardDescription className="text-sm sm:text-base">Update your personal information and profile details</CardDescription>
                 </CardHeader>
                 <CardContent className="space-y-6">
-                  <div className="flex items-center space-x-6">
-                    <Avatar className="h-24 w-24">
+                  {/* Avatar section - responsive layout */}
+                  <div className="flex flex-col sm:flex-row items-center sm:items-start space-y-4 sm:space-y-0 sm:space-x-6">
+                    <Avatar className="h-20 w-20 sm:h-24 sm:w-24">
                       <AvatarImage src="/placeholder.svg?height=96&width=96" alt={user?.name} />
-                      <AvatarFallback className="text-2xl">{user?.name?.charAt(0)}</AvatarFallback>
+                      <AvatarFallback className="text-xl sm:text-2xl">{user?.name?.charAt(0)}</AvatarFallback>
                     </Avatar>
-                    <div className="space-y-2">
-                      <Button variant="outline" className="flex items-center">
-                        <Camera className="h-4 w-4 mr-2" />
+                    <div className="flex flex-col sm:flex-row space-y-2 sm:space-y-0 sm:space-x-2">
+                      <Button variant="outline" className="flex items-center text-xs sm:text-sm">
+                        <Camera className="h-3 w-3 sm:h-4 sm:w-4 mr-1 sm:mr-2" />
                         Change Photo
                       </Button>
-                      <Button variant="ghost" className="text-destructive flex items-center">
-                        <Trash2 className="h-4 w-4 mr-2" />
+                      <Button variant="ghost" className="text-red-600 flex items-center text-xs sm:text-sm">
+                        <Trash2 className="h-3 w-3 sm:h-4 sm:w-4 mr-1 sm:mr-2" />
                         Remove Photo
                       </Button>
                     </div>
                   </div>
 
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                  {/* Form fields - responsive grid */}
+                  <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 sm:gap-6">
                     <div className="space-y-2">
-                      <Label htmlFor="name">Full Name</Label>
+                      <Label htmlFor="name" className="text-sm sm:text-base">Full Name</Label>
                       <Input
                         id="name"
                         value={name}
                         onChange={(e) => setName(e.target.value)}
                         placeholder="Enter your full name"
+                        className="text-sm sm:text-base"
                       />
                     </div>
                     <div className="space-y-2">
-                      <Label htmlFor="email">Email Address</Label>
+                      <Label htmlFor="email" className="text-sm sm:text-base">Email Address</Label>
                       <Input
                         id="email"
                         type="email"
                         value={email}
                         onChange={(e) => setEmail(e.target.value)}
                         placeholder="Enter your email"
+                        className="text-sm sm:text-base"
                       />
                     </div>
                   </div>
 
                   <div className="space-y-2">
-                    <Label htmlFor="bio">Bio</Label>
+                    <Label htmlFor="bio" className="text-sm sm:text-base">Bio</Label>
                     <Textarea
                       id="bio"
                       value={bio}
                       onChange={(e) => setBio(e.target.value)}
                       placeholder="Tell us about yourself..."
-                      className="min-h-[100px]"
+                      className="min-h-[80px] sm:min-h-[100px] text-sm sm:text-base"
                     />
                   </div>
 
                   <div className="space-y-2">
-                    <Label htmlFor="location">Location</Label>
+                    <Label htmlFor="location" className="text-sm sm:text-base">Location</Label>
                     <Input
                       id="location"
                       value={location}
                       onChange={(e) => setLocation(e.target.value)}
                       placeholder="Enter your location"
+                      className="text-sm sm:text-base"
                     />
                   </div>
 
-                  <div className="flex items-center space-x-2">
-                    <Badge className="bg-primary hover:bg-primary">
+                  <div className="flex flex-col sm:flex-row items-start sm:items-center space-y-2 sm:space-y-0 sm:space-x-2">
+                    <Badge className="bg-blue-600 hover:bg-blue-700 text-xs sm:text-sm">
                       {user?.kycVerified ? "KYC Verified" : "KYC Pending"}
                     </Badge>
                     {!user?.kycVerified && (
-                      <Button variant="outline" size="sm">
+                      <Button variant="outline" size="sm" className="text-xs sm:text-sm">
                         Complete KYC
                       </Button>
                     )}
@@ -232,7 +241,7 @@ export default function SettingsPage() {
                   <Button
                     onClick={handleProfileUpdate}
                     disabled={isSubmitting}
-                    className="bg-primary hover:bg-primary-dark"
+                    className="w-full sm:w-auto bg-blue-600 hover:bg-blue-700"
                   >
                     {isSubmitting ? "Updating..." : "Update Profile"}
                   </Button>
@@ -245,12 +254,12 @@ export default function SettingsPage() {
             <div className="space-y-6">
               <Card>
                 <CardHeader>
-                  <CardTitle>Change Password</CardTitle>
-                  <CardDescription>Update your password to keep your account secure</CardDescription>
+                  <CardTitle className="text-lg sm:text-xl">Change Password</CardTitle>
+                  <CardDescription className="text-sm sm:text-base">Update your password to keep your account secure</CardDescription>
                 </CardHeader>
                 <CardContent className="space-y-4">
                   <div className="space-y-2">
-                    <Label htmlFor="currentPassword">Current Password</Label>
+                    <Label htmlFor="currentPassword" className="text-sm sm:text-base">Current Password</Label>
                     <div className="relative">
                       <Input
                         id="currentPassword"
@@ -258,6 +267,7 @@ export default function SettingsPage() {
                         value={currentPassword}
                         onChange={(e) => setCurrentPassword(e.target.value)}
                         placeholder="Enter current password"
+                        className="text-sm sm:text-base pr-10"
                       />
                       <Button
                         type="button"
@@ -267,16 +277,16 @@ export default function SettingsPage() {
                         onClick={() => setShowCurrentPassword(!showCurrentPassword)}
                       >
                         {showCurrentPassword ? (
-                          <EyeOff className="h-4 w-4 text-neutral-dark" />
+                          <EyeOff className="h-4 w-4 text-gray-600" />
                         ) : (
-                          <Eye className="h-4 w-4 text-neutral-dark" />
+                          <Eye className="h-4 w-4 text-gray-600" />
                         )}
                       </Button>
                     </div>
                   </div>
 
                   <div className="space-y-2">
-                    <Label htmlFor="newPassword">New Password</Label>
+                    <Label htmlFor="newPassword" className="text-sm sm:text-base">New Password</Label>
                     <div className="relative">
                       <Input
                         id="newPassword"
@@ -284,6 +294,7 @@ export default function SettingsPage() {
                         value={newPassword}
                         onChange={(e) => setNewPassword(e.target.value)}
                         placeholder="Enter new password"
+                        className="text-sm sm:text-base pr-10"
                       />
                       <Button
                         type="button"
@@ -293,16 +304,16 @@ export default function SettingsPage() {
                         onClick={() => setShowNewPassword(!showNewPassword)}
                       >
                         {showNewPassword ? (
-                          <EyeOff className="h-4 w-4 text-neutral-dark" />
+                          <EyeOff className="h-4 w-4 text-gray-600" />
                         ) : (
-                          <Eye className="h-4 w-4 text-neutral-dark" />
+                          <Eye className="h-4 w-4 text-gray-600" />
                         )}
                       </Button>
                     </div>
                   </div>
 
                   <div className="space-y-2">
-                    <Label htmlFor="confirmPassword">Confirm New Password</Label>
+                    <Label htmlFor="confirmPassword" className="text-sm sm:text-base">Confirm New Password</Label>
                     <div className="relative">
                       <Input
                         id="confirmPassword"
@@ -310,6 +321,7 @@ export default function SettingsPage() {
                         value={confirmPassword}
                         onChange={(e) => setConfirmPassword(e.target.value)}
                         placeholder="Confirm new password"
+                        className="text-sm sm:text-base pr-10"
                       />
                       <Button
                         type="button"
@@ -319,9 +331,9 @@ export default function SettingsPage() {
                         onClick={() => setShowConfirmPassword(!showConfirmPassword)}
                       >
                         {showConfirmPassword ? (
-                          <EyeOff className="h-4 w-4 text-neutral-dark" />
+                          <EyeOff className="h-4 w-4 text-gray-600" />
                         ) : (
-                          <Eye className="h-4 w-4 text-neutral-dark" />
+                          <Eye className="h-4 w-4 text-gray-600" />
                         )}
                       </Button>
                     </div>
@@ -330,7 +342,7 @@ export default function SettingsPage() {
                   <Button
                     onClick={handlePasswordChange}
                     disabled={isSubmitting}
-                    className="bg-primary hover:bg-primary-dark"
+                    className="w-full sm:w-auto bg-blue-600 hover:bg-blue-700"
                   >
                     {isSubmitting ? "Updating..." : "Change Password"}
                   </Button>
@@ -339,20 +351,20 @@ export default function SettingsPage() {
 
               <Card>
                 <CardHeader>
-                  <CardTitle>Two-Factor Authentication</CardTitle>
-                  <CardDescription>Add an extra layer of security to your account</CardDescription>
+                  <CardTitle className="text-lg sm:text-xl">Two-Factor Authentication</CardTitle>
+                  <CardDescription className="text-sm sm:text-base">Add an extra layer of security to your account</CardDescription>
                 </CardHeader>
                 <CardContent>
                   <div className="flex items-center justify-between">
-                    <div>
-                      <p className="font-medium">Enable 2FA</p>
-                      <p className="text-sm text-neutral-dark">Secure your account with two-factor authentication</p>
+                    <div className="flex-1 pr-4">
+                      <p className="font-medium text-sm sm:text-base">Enable 2FA</p>
+                      <p className="text-xs sm:text-sm text-gray-600">Secure your account with two-factor authentication</p>
                     </div>
                     <Switch checked={twoFactorEnabled} onCheckedChange={setTwoFactorEnabled} />
                   </div>
                   {twoFactorEnabled && (
-                    <div className="mt-4 p-4 bg-neutral-light rounded-md">
-                      <p className="text-sm">
+                    <div className="mt-4 p-3 sm:p-4 bg-gray-50 rounded-md">
+                      <p className="text-xs sm:text-sm">
                         Two-factor authentication is enabled. You'll need to enter a code from your authenticator app
                         when logging in.
                       </p>
@@ -361,19 +373,19 @@ export default function SettingsPage() {
                 </CardContent>
               </Card>
 
-              <Card className="border-destructive">
+              <Card className="border-red-200">
                 <CardHeader>
-                  <CardTitle className="text-destructive flex items-center">
-                    <AlertTriangle className="h-5 w-5 mr-2" />
+                  <CardTitle className="text-red-600 flex items-center text-lg sm:text-xl">
+                    <AlertTriangle className="h-4 w-4 sm:h-5 sm:w-5 mr-2" />
                     Danger Zone
                   </CardTitle>
-                  <CardDescription>Irreversible and destructive actions</CardDescription>
+                  <CardDescription className="text-sm sm:text-base">Irreversible and destructive actions</CardDescription>
                 </CardHeader>
                 <CardContent>
                   <Button variant="destructive" className="w-full">
                     Delete Account
                   </Button>
-                  <p className="text-xs text-neutral-dark mt-2">
+                  <p className="text-xs text-gray-600 mt-2">
                     This action cannot be undone. All your data will be permanently deleted.
                   </p>
                 </CardContent>
@@ -384,38 +396,38 @@ export default function SettingsPage() {
           <TabsContent value="notifications">
             <Card>
               <CardHeader>
-                <CardTitle>Notification Preferences</CardTitle>
-                <CardDescription>Choose how you want to be notified about activity</CardDescription>
+                <CardTitle className="text-lg sm:text-xl">Notification Preferences</CardTitle>
+                <CardDescription className="text-sm sm:text-base">Choose how you want to be notified about activity</CardDescription>
               </CardHeader>
               <CardContent className="space-y-6">
                 <div className="flex items-center justify-between">
-                  <div>
-                    <p className="font-medium">Email Notifications</p>
-                    <p className="text-sm text-neutral-dark">Receive notifications via email</p>
+                  <div className="flex-1 pr-4">
+                    <p className="font-medium text-sm sm:text-base">Email Notifications</p>
+                    <p className="text-xs sm:text-sm text-gray-600">Receive notifications via email</p>
                   </div>
                   <Switch checked={emailNotifications} onCheckedChange={setEmailNotifications} />
                 </div>
 
                 <div className="flex items-center justify-between">
-                  <div>
-                    <p className="font-medium">Push Notifications</p>
-                    <p className="text-sm text-neutral-dark">Receive push notifications in your browser</p>
+                  <div className="flex-1 pr-4">
+                    <p className="font-medium text-sm sm:text-base">Push Notifications</p>
+                    <p className="text-xs sm:text-sm text-gray-600">Receive push notifications in your browser</p>
                   </div>
                   <Switch checked={pushNotifications} onCheckedChange={setPushNotifications} />
                 </div>
 
                 <div className="flex items-center justify-between">
-                  <div>
-                    <p className="font-medium">Market Updates</p>
-                    <p className="text-sm text-neutral-dark">Get notified about new markets and updates</p>
+                  <div className="flex-1 pr-4">
+                    <p className="font-medium text-sm sm:text-base">Market Updates</p>
+                    <p className="text-xs sm:text-sm text-gray-600">Get notified about new markets and updates</p>
                   </div>
                   <Switch checked={marketUpdates} onCheckedChange={setMarketUpdates} />
                 </div>
 
                 <div className="flex items-center justify-between">
-                  <div>
-                    <p className="font-medium">Winnings Notifications</p>
-                    <p className="text-sm text-neutral-dark">Get notified when you win a bet</p>
+                  <div className="flex-1 pr-4">
+                    <p className="font-medium text-sm sm:text-base">Winnings Notifications</p>
+                    <p className="text-xs sm:text-sm text-gray-600">Get notified when you win a bet</p>
                   </div>
                   <Switch checked={winningsNotifications} onCheckedChange={setWinningsNotifications} />
                 </div>
@@ -423,7 +435,7 @@ export default function SettingsPage() {
                 <Button
                   onClick={handleNotificationUpdate}
                   disabled={isSubmitting}
-                  className="bg-primary hover:bg-primary-dark"
+                  className="w-full sm:w-auto bg-blue-600 hover:bg-blue-700"
                 >
                   {isSubmitting ? "Updating..." : "Update Notifications"}
                 </Button>
@@ -434,15 +446,15 @@ export default function SettingsPage() {
           <TabsContent value="preferences">
             <Card>
               <CardHeader>
-                <CardTitle>App Preferences</CardTitle>
-                <CardDescription>Customize your WagerMe experience</CardDescription>
+                <CardTitle className="text-lg sm:text-xl">App Preferences</CardTitle>
+                <CardDescription className="text-sm sm:text-base">Customize your WagerMe experience</CardDescription>
               </CardHeader>
               <CardContent className="space-y-6">
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 sm:gap-6">
                   <div className="space-y-2">
-                    <Label htmlFor="currency">Preferred Currency</Label>
+                    <Label htmlFor="currency" className="text-sm sm:text-base">Preferred Currency</Label>
                     <Select value={currency} onValueChange={setCurrency}>
-                      <SelectTrigger>
+                      <SelectTrigger className="text-sm sm:text-base">
                         <SelectValue placeholder="Select currency" />
                       </SelectTrigger>
                       <SelectContent>
@@ -455,9 +467,9 @@ export default function SettingsPage() {
                   </div>
 
                   <div className="space-y-2">
-                    <Label htmlFor="language">Language</Label>
+                    <Label htmlFor="language" className="text-sm sm:text-base">Language</Label>
                     <Select value={language} onValueChange={setLanguage}>
-                      <SelectTrigger>
+                      <SelectTrigger className="text-sm sm:text-base">
                         <SelectValue placeholder="Select language" />
                       </SelectTrigger>
                       <SelectContent>
@@ -470,9 +482,9 @@ export default function SettingsPage() {
                   </div>
 
                   <div className="space-y-2">
-                    <Label htmlFor="timezone">Timezone</Label>
+                    <Label htmlFor="timezone" className="text-sm sm:text-base">Timezone</Label>
                     <Select value={timezone} onValueChange={setTimezone}>
-                      <SelectTrigger>
+                      <SelectTrigger className="text-sm sm:text-base">
                         <SelectValue placeholder="Select timezone" />
                       </SelectTrigger>
                       <SelectContent>
@@ -485,9 +497,9 @@ export default function SettingsPage() {
                   </div>
 
                   <div className="space-y-2">
-                    <Label htmlFor="theme">Theme</Label>
+                    <Label htmlFor="theme" className="text-sm sm:text-base">Theme</Label>
                     <Select value={theme} onValueChange={setTheme}>
-                      <SelectTrigger>
+                      <SelectTrigger className="text-sm sm:text-base">
                         <SelectValue placeholder="Select theme" />
                       </SelectTrigger>
                       <SelectContent>
@@ -502,7 +514,7 @@ export default function SettingsPage() {
                 <Button
                   onClick={handlePreferencesUpdate}
                   disabled={isSubmitting}
-                  className="bg-primary hover:bg-primary-dark"
+                  className="w-full sm:w-auto bg-blue-600 hover:bg-blue-700"
                 >
                   {isSubmitting ? "Updating..." : "Update Preferences"}
                 </Button>
