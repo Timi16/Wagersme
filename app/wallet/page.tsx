@@ -10,6 +10,7 @@ import { AxiosError } from 'axios';
 import { useAuthService } from "@/services/auth"
 import { useWallet } from "@/services/wallet"
 import { initiateWithdrawal } from '@/services/payment'
+import axios from 'axios';
 import {
   Wallet,
   ArrowUpRight,
@@ -22,9 +23,27 @@ import {
   RefreshCw,
 } from "lucide-react"
 
+// Type definitions
+interface Bank {
+  code: string;
+  name: string;
+}
+
+interface Transaction {
+  id: string;
+  type: "deposit" | "withdraw" | "bet" | "win" | "loss";
+  amount: number;
+  date: string;
+  method?: string;
+  wager?: string;
+}
+
 export default function WalletPage() {
   const [withdrawAmount, setWithdrawAmount] = useState("")
   const [isProcessing, setIsProcessing] = useState(false)
+  const [banks, setBanks] = useState<Bank[]>([])
+  const [selectedBank, setSelectedBank] = useState('')
+  const [accountNumber, setAccountNumber] = useState('')
   const { toast } = useToast()
   const { user, isAuthenticated } = useAuthService()
   const { 
@@ -50,29 +69,49 @@ export default function WalletPage() {
     if (!isAuthenticated || !user) {
       hasLoadedData.current = false
     }
-  }, [isAuthenticated, user])
+  }, [isAuthenticated, user, fetchProfile, fetchTransactions])
 
-const handleWithdraw = async (amount: number) => {
-  try {
-    await initiateWithdrawal(amount);
-    toast({
-      title: "Withdrawal successful",
-      description: "Your withdrawal has been processed.",
-    });
-  } catch (error) {
-    let errorMessage = "There was an error processing your withdrawal.";
-    if (error instanceof AxiosError) {
-      if (error.response && error.response.data && error.response.data.message) {
-        errorMessage = error.response.data.message;
+  useEffect(() => {
+    const fetchBanks = async () => {
+      try {
+        const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000';
+        const response = await axios.get<Bank[]>(`${API_URL}/payment/banks`)
+        setBanks(response.data)
+      } catch (error) {
+        console.error('Failed to fetch banks:', error)
       }
     }
-    toast({
-      title: "Withdrawal failed",
-      description: errorMessage,
-      variant: "destructive",
-    });
+    fetchBanks()
+  }, [])
+
+  const handleWithdraw = async (amount: number, bankCode: string, accountNumber: string) => {
+    setIsProcessing(true)
+    try {
+      await initiateWithdrawal(amount, bankCode, accountNumber)
+      toast({
+        title: "Withdrawal initiated",
+        description: `Your withdrawal of ₦${amount} is being processed.`,
+      })
+      setWithdrawAmount("")
+      setSelectedBank("")
+      setAccountNumber("")
+      await handleRefresh()
+    } catch (error) {
+      let errorMessage = "There was an error processing your withdrawal."
+      if (error instanceof AxiosError) {
+        if (error.response && error.response.data && error.response.data.message) {
+          errorMessage = error.response.data.message
+        }
+      }
+      toast({
+        title: "Withdrawal failed",
+        description: errorMessage,
+        variant: "destructive",
+      })
+    } finally {
+      setIsProcessing(false)
+    }
   }
-};
 
   const handleRefresh = async () => {
     try {
@@ -137,7 +176,7 @@ const handleWithdraw = async (amount: number) => {
 
   const balance = walletData?.balance || 0
   const pendingWinnings = walletData?.pendingWinnings || 0
-  const transactionList = transactions || []
+  const transactionList = (transactions as Transaction[]) || []
 
   return (
     <div className="container mx-auto px-4 py-8">
@@ -221,17 +260,35 @@ const handleWithdraw = async (amount: number) => {
             </div>
           </div>
           <div className="space-y-2">
-            <Label>Withdrawal Method</Label>
-            <div className="border rounded-md p-3 flex items-center space-x-3 bg-gray-50">
-              <CreditCard className="h-5 w-5 text-blue-600" />
-              <span>Bank Account</span>
-            </div>
+            <Label htmlFor="bankSelect">Select Bank</Label>
+            <select
+              id="bankSelect"
+              value={selectedBank}
+              onChange={(e) => setSelectedBank(e.target.value)}
+              className="w-full p-2 border rounded"
+            >
+              <option value="">Select a bank</option>
+              {banks.map((bank) => (
+                <option key={bank.code} value={bank.code}>
+                  {bank.name}
+                </option>
+              ))}
+            </select>
+          </div>
+          <div className="space-y-2">
+            <Label htmlFor="accountNumber">Account Number</Label>
+            <Input
+              id="accountNumber"
+              value={accountNumber}
+              onChange={(e) => setAccountNumber(e.target.value)}
+              placeholder="Enter account number"
+            />
           </div>
         </CardContent>
         <CardFooter>
           <Button
-            onClick={() => handleWithdraw(Number.parseFloat(withdrawAmount))}
-            disabled={!withdrawAmount || isProcessing || Number.parseFloat(withdrawAmount) > balance}
+            onClick={() => handleWithdraw(Number.parseFloat(withdrawAmount), selectedBank, accountNumber)}
+            disabled={!withdrawAmount || !selectedBank || !accountNumber || isProcessing || Number.parseFloat(withdrawAmount) > balance}
             className="w-full bg-blue-600 hover:bg-blue-700"
           >
             {isProcessing ? "Processing..." : "Withdraw Funds"}
@@ -270,8 +327,8 @@ const handleWithdraw = async (amount: number) => {
                   </div>
                 </div>
                 <div className={`font-medium ${transaction.amount > 0 ? "text-green-600" : "text-red-600"}`}>
-  {transaction.amount > 0 ? "+" : ""}{transaction.amount.toLocaleString()}
-</div>
+                  {transaction.amount > 0 ? "+" : ""}{transaction.amount.toLocaleString()}
+                </div>
               </div>
             ))
           ) : (
