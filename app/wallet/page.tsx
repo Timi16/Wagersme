@@ -230,7 +230,7 @@ const handleWithdraw = async (amount: number) => {
         </CardContent>
         <CardFooter>
           <Button
-            onClick={handleWithdraw}
+            onClick={() => handleWithdraw(Number.parseFloat(withdrawAmount))}
             disabled={!withdrawAmount || isProcessing || Number.parseFloat(withdrawAmount) > balance}
             className="w-full bg-blue-600 hover:bg-blue-700"
           >
