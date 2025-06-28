@@ -1,4 +1,5 @@
 import axios from 'axios';
+import authService from './auth';
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000';
 
@@ -9,8 +10,8 @@ interface WithdrawalResponse {
 
 export const initiateWithdrawal = async (amount: number, bankCode: string, accountNumber: string): Promise<WithdrawalResponse> => {
   try {
-    // Retrieve the token from localStorage
-    const token = localStorage.getItem('token');
+    // Retrieve the token using authService
+    const token = authService.getToken();
     if (!token) {
       throw new Error('No authentication token found. Please log in.');
     }
@@ -31,7 +32,6 @@ export const initiateWithdrawal = async (amount: number, bankCode: string, accou
     );
     return response.data;
   } catch (error) {
-    // Handle authentication errors specifically
     if (axios.isAxiosError(error) && error.response?.status === 401) {
       throw new Error('Authentication failed. Please log in again.');
     }

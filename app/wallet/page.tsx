@@ -76,7 +76,17 @@ export default function WalletPage() {
       try {
         const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000';
         const response = await axios.get<Bank[]>(`${API_URL}/payment/banks`)
-        setBanks(response.data)
+        
+        // Remove duplicates based on bank code and create unique keys
+        const uniqueBanks = response.data.reduce((acc: Bank[], bank, index) => {
+          const existingBank = acc.find(b => b.code === bank.code);
+          if (!existingBank) {
+            acc.push(bank);
+          }
+          return acc;
+        }, []);
+        
+        setBanks(uniqueBanks)
       } catch (error) {
         console.error('Failed to fetch banks:', error)
       }
@@ -85,33 +95,56 @@ export default function WalletPage() {
   }, [])
 
   const handleWithdraw = async (amount: number, bankCode: string, accountNumber: string) => {
-    setIsProcessing(true)
+    setIsProcessing(true);
     try {
-      await initiateWithdrawal(amount, bankCode, accountNumber)
+      await initiateWithdrawal(amount, bankCode, accountNumber);
       toast({
         title: "Withdrawal initiated",
         description: `Your withdrawal of ₦${amount} is being processed.`,
-      })
-      setWithdrawAmount("")
-      setSelectedBank("")
-      setAccountNumber("")
-      await handleRefresh()
+      });
+      setWithdrawAmount("");
+      setSelectedBank("");
+      setAccountNumber("");
+      await handleRefresh();
     } catch (error) {
-      let errorMessage = "There was an error processing your withdrawal."
+      console.error("Withdrawal error:", error);
+      let errorMessage = "There was an error processing your withdrawal.";
+      
+      // Check if the error is an AxiosError
       if (error instanceof AxiosError) {
-        if (error.response && error.response.data && error.response.data.message) {
-          errorMessage = error.response.data.message
+        if (error.response) {
+          // Server responded with an error
+          if (error.response.data && error.response.data.message) {
+            errorMessage = error.response.data.message;
+          } else {
+            errorMessage = `Server error (status ${error.response.status})`;
+          }
+        } else if (error.request) {
+          // No response from server (e.g., network issue)
+          errorMessage = "No response from the server. Check your network.";
+        } else {
+          // Error setting up the request
+          errorMessage = "Request setup failed: " + error.message;
         }
       }
+      // Check if the error is a generic Error
+      else if (error instanceof Error) {
+        errorMessage = "Unexpected error: " + error.message;
+      }
+      // Fallback for any other type of error
+      else {
+        errorMessage = "An unknown error occurred.";
+      }
+      
       toast({
         title: "Withdrawal failed",
         description: errorMessage,
         variant: "destructive",
-      })
+      });
     } finally {
-      setIsProcessing(false)
+      setIsProcessing(false);
     }
-  }
+  };
 
   const handleRefresh = async () => {
     try {
@@ -268,8 +301,8 @@ export default function WalletPage() {
               className="w-full p-2 border rounded"
             >
               <option value="">Select a bank</option>
-              {banks.map((bank) => (
-                <option key={bank.code} value={bank.code}>
+              {banks.map((bank, index) => (
+                <option key={`${bank.code}-${index}`} value={bank.code}>
                   {bank.name}
                 </option>
               ))}
