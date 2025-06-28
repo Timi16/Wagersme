@@ -111,7 +111,7 @@ export function Header() {
               <div className="flex flex-col space-y-3">
                 <Link
                   className="text-muted-foreground hover:text-foreground"
-                  href="/markets"
+                  href="/wagers"
                   onClick={() => setIsMenuOpen(false)}
                 >
                   Markets
