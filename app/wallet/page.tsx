@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useRef } from "react"
 import { Button } from "@/components/ui/button"
-import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card"
+import { Card, CardContent, CardDescription, CardHeader, CardTitle,CardFooter } from "@/components/ui/card"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { useToast } from "@/hooks/use-toast"
@@ -21,6 +21,7 @@ import {
   CheckCircle2,
   XCircle,
   RefreshCw,
+  Copy,
 } from "lucide-react"
 
 // Type definitions
@@ -77,7 +78,6 @@ export default function WalletPage() {
         const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000';
         const response = await axios.get<Bank[]>(`${API_URL}/payment/banks`)
         
-        // Remove duplicates based on bank code and create unique keys
         const uniqueBanks = response.data.reduce((acc: Bank[], bank, index) => {
           const existingBank = acc.find(b => b.code === bank.code);
           if (!existingBank) {
@@ -110,29 +110,17 @@ export default function WalletPage() {
       console.error("Withdrawal error:", error);
       let errorMessage = "There was an error processing your withdrawal.";
       
-      // Check if the error is an AxiosError
       if (error instanceof AxiosError) {
         if (error.response) {
-          // Server responded with an error
-          if (error.response.data && error.response.data.message) {
-            errorMessage = error.response.data.message;
-          } else {
-            errorMessage = `Server error (status ${error.response.status})`;
-          }
+          errorMessage = error.response.data?.message || `Server error (status ${error.response.status})`;
         } else if (error.request) {
-          // No response from server (e.g., network issue)
           errorMessage = "No response from the server. Check your network.";
         } else {
-          // Error setting up the request
           errorMessage = "Request setup failed: " + error.message;
         }
-      }
-      // Check if the error is a generic Error
-      else if (error instanceof Error) {
+      } else if (error instanceof Error) {
         errorMessage = "Unexpected error: " + error.message;
-      }
-      // Fallback for any other type of error
-      else {
+      } else {
         errorMessage = "An unknown error occurred.";
       }
       
@@ -223,6 +211,48 @@ export default function WalletPage() {
           Refresh
         </Button>
       </div>
+
+      {/* Virtual Account Details Section */}
+      {walletData?.virtualAccount && (
+        <Card className="mb-8">
+          <CardHeader>
+            <CardTitle>Deposit Account Details</CardTitle>
+            <CardDescription>Use this account to fund your wallet</CardDescription>
+          </CardHeader>
+          <CardContent>
+            <div className="space-y-4">
+              <div>
+                <Label>Account Name</Label>
+                <p>{walletData.virtualAccount.accountName}</p>
+              </div>
+              <div>
+                <Label>Account Number</Label>
+                <div className="flex items-center">
+                  <p className="font-medium">{walletData.virtualAccount.accountNumber}</p>
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    onClick={() => {
+                      navigator.clipboard.writeText(walletData.virtualAccount.accountNumber);
+                      toast({
+                        title: "Copied",
+                        description: "Account number copied to clipboard",
+                      });
+                    }}
+                    className="ml-2"
+                  >
+                    <Copy className="h-4 w-4" />
+                  </Button>
+                </div>
+              </div>
+              <div>
+                <Label>Bank</Label>
+                <p>{walletData.virtualAccount.bankName}</p>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+      )}
 
       <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
         <Card>
@@ -347,32 +377,25 @@ export default function WalletPage() {
                   <div className="mr-4">{getTransactionIcon(transaction.type)}</div>
                   <div>
                     <div className="font-medium">
-                      {transaction.type === "withdraw" && `Withdrawal to Bank Account`}
-                      {transaction.type === "bet" && "Placed bet on"}
-                      {transaction.type === "win" && "Won bet on"}
-                      {transaction.type === "loss" && "Lost bet on"}
-                      {transaction.type === "deposit" && `Deposit via ${transaction.method || 'Unknown'}`}
+                      {transaction.type.charAt(0).toUpperCase() + transaction.type.slice(1)}
                     </div>
-                    {(transaction.type === "bet" || transaction.type === "win" || transaction.type === "loss") && (
-                      <div className="text-sm text-gray-600 truncate max-w-[250px]">{transaction.wager || 'N/A'}</div>
-                    )}
-                    <div className="text-xs text-gray-500 mt-1">{transaction.date}</div>
+                    <div className="text-sm text-gray-600">{new Date(transaction.date).toLocaleString()}</div>
                   </div>
                 </div>
-                <div className={`font-medium ${transaction.amount > 0 ? "text-green-600" : "text-red-600"}`}>
-                  {transaction.amount > 0 ? "+" : ""}{transaction.amount.toLocaleString()}
+                <div className="text-right">
+                  <div className={`font-medium ${transaction.type === 'deposit' || transaction.type === 'win' ? 'text-green-600' : 'text-red-600'}`}>
+                    {transaction.type === 'deposit' || transaction.type === 'win' ? '+' : '-'}₦{transaction.amount.toLocaleString()}
+                  </div>
+                  {transaction.method && (
+                    <div className="text-sm text-gray-600">{transaction.method}</div>
+                  )}
                 </div>
               </div>
             ))
           ) : (
-            <div className="text-center p-4 text-gray-500">No transactions found</div>
+            <p className="text-gray-600">No transactions yet.</p>
           )}
         </CardContent>
-        <CardFooter>
-          <Button variant="outline" className="w-full">
-            View All Transactions
-          </Button>
-        </CardFooter>
       </Card>
     </div>
   )
