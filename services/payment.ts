@@ -7,7 +7,7 @@ interface WithdrawalResponse {
 
 export const initiateWithdrawal = async (amount: number): Promise<WithdrawalResponse> => {
   try {
-    const response = await axios.post<WithdrawalResponse>('/api/payment/withdraw', { amount });
+    const response = await axios.post<WithdrawalResponse>('/payment/withdraw', { amount });
     return response.data;
   } catch (error) {
     throw error;
