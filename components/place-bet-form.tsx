@@ -1,16 +1,14 @@
 "use client"
 
-import type React from "react"
-
 import { useState } from "react"
-import { Card, CardContent, CardFooter, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group"
-import { useToast } from "@/hooks/use-toast"
-import { useAuth } from "@/hooks/use-auth"
-import { useRouter } from "next/navigation"
+import { Alert, AlertDescription } from "@/components/ui/alert"
+import { Loader2, TrendingUp, TrendingDown, CheckCircle, Users, DollarSign } from "lucide-react"
+import { useWager } from "@/hooks/useWagers"
 
 interface PlaceBetFormProps {
   wagerId: string
@@ -21,171 +19,261 @@ interface PlaceBetFormProps {
 }
 
 export function PlaceBetForm({ wagerId, minStake, maxStake, yesOdds, noOdds }: PlaceBetFormProps) {
-  const [prediction, setPrediction] = useState<"yes" | "no" | null>(null)
-  const [amount, setAmount] = useState<string>(minStake.toString())
-  const [isSubmitting, setIsSubmitting] = useState(false)
-  const { toast } = useToast()
-  const { user } = useAuth()
-  const router = useRouter()
+  const [choice, setChoice] = useState<"yes" | "no">("yes")
+  const [stake, setStake] = useState("")
+  const [loading, setLoading] = useState(false)
+  const [error, setError] = useState("")
+  const [success, setSuccess] = useState(false)
+  const [userHasBet, setUserHasBet] = useState(false)
+  const [userBetDetails, setUserBetDetails] = useState<{
+    choice: "yes" | "no"
+    stake: number
+    potentialWinnings: number
+  } | null>(null)
 
-  const handleAmountChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const value = e.target.value
-    if (value === "" || /^\d+(\.\d{0,2})?$/.test(value)) {
-      setAmount(value)
+  const { wager, placeBet } = useWager(Number(wagerId))
+
+  const stakeAmount = Number.parseFloat(stake) || 0
+  const potentialWinnings = choice === "yes" ? stakeAmount * (yesOdds || 1) : stakeAmount * (noOdds || 1)
+
+  const handleSubmit = async () => {
+    if (!stake || stakeAmount <= 0) {
+      setError("Please enter a valid stake amount")
+      return
+    }
+
+    if (stakeAmount < minStake || stakeAmount > maxStake) {
+      setError(`Stake must be between ₦${minStake.toLocaleString()} and ₦${maxStake.toLocaleString()}`)
+      return
+    }
+
+    setLoading(true)
+    setError("")
+    setSuccess(false)
+
+    try {
+      console.log("🎯 Submitting bet:", {
+        wagerId,
+        choice,
+        stake: stakeAmount,
+        endpoint: `/api/wagers/${wagerId}/bet`,
+      })
+
+      const response = await placeBet(choice, stakeAmount)
+      console.log("✅ Bet response:", response)
+
+      // Store user bet details
+      setUserBetDetails({
+        choice,
+        stake: stakeAmount,
+        potentialWinnings,
+      })
+
+      setSuccess(true)
+      setUserHasBet(true)
+      setStake("")
+
+      // Show success message for 3 seconds
+      setTimeout(() => {
+        setSuccess(false)
+      }, 3000)
+    } catch (err) {
+      console.error("❌ Bet placement failed:", err)
+      setError(err instanceof Error ? err.message : "Failed to place bet")
+    } finally {
+      setLoading(false)
     }
   }
 
-  const calculatePotentialWinnings = () => {
-    if (!prediction || !amount || isNaN(Number.parseFloat(amount))) return 0
+  // If user has placed a bet, show different UI
+  if (userHasBet && userBetDetails) {
+    return (
+      <Card className="border-t-4 border-t-green-500">
+        <CardHeader>
+          <CardTitle className="flex items-center text-green-600">
+            <CheckCircle className="mr-2 h-5 w-5" />
+            Your Bet is Active!
+          </CardTitle>
+          <CardDescription>You're now part of this wager</CardDescription>
+        </CardHeader>
+        <CardContent className="space-y-4">
+          {success && (
+            <Alert className="border-green-200 bg-green-50">
+              <CheckCircle className="h-4 w-4 text-green-600" />
+              <AlertDescription className="text-green-800">Bet placed successfully! 🎉</AlertDescription>
+            </Alert>
+          )}
 
-    const stake = Number.parseFloat(amount)
-    const odds = prediction === "yes" ? yesOdds : noOdds
-    const grossWin = stake * odds
-    const netWin = grossWin - stake
-
-    return netWin
-  }
-
-  const handleSubmit = (e: React.FormEvent) => {
-    e.preventDefault()
-
-    if (!user) {
-      toast({
-        title: "Authentication required",
-        description: "Please log in to place a bet.",
-        variant: "destructive",
-      })
-      router.push("/login")
-      return
-    }
-
-    if (!prediction) {
-      toast({
-        title: "Selection required",
-        description: "Please select either Yes or No.",
-        variant: "destructive",
-      })
-      return
-    }
-
-    const stakeAmount = Number.parseFloat(amount)
-
-    if (isNaN(stakeAmount) || stakeAmount < minStake) {
-      toast({
-        title: "Invalid stake",
-        description: `Minimum stake is $${minStake}.`,
-        variant: "destructive",
-      })
-      return
-    }
-
-    if (stakeAmount > maxStake) {
-      toast({
-        title: "Invalid stake",
-        description: `Maximum stake is $${maxStake}.`,
-        variant: "destructive",
-      })
-      return
-    }
-
-    setIsSubmitting(true)
-
-    // Simulate API call
-    setTimeout(() => {
-      toast({
-        title: "Bet placed successfully!",
-        description: `You placed $${stakeAmount} on ${prediction.toUpperCase()}.`,
-      })
-      setIsSubmitting(false)
-    }, 1500)
-  }
-
-  const potentialWinnings = calculatePotentialWinnings()
-
-  return (
-    <Card className="border-t-4 border-t-accent">
-      <CardHeader>
-        <CardTitle>Place Your Bet</CardTitle>
-      </CardHeader>
-      <CardContent>
-        <form onSubmit={handleSubmit} className="space-y-6">
-          <div className="space-y-4">
-            <Label>Your Prediction</Label>
-            <RadioGroup
-              value={prediction || ""}
-              onValueChange={(value) => setPrediction(value as "yes" | "no")}
-              className="grid grid-cols-2 gap-4"
-            >
-              <Label
-                htmlFor="yes-option"
-                className={`flex flex-col items-center justify-between rounded-md border-2 p-4 cursor-pointer ${
-                  prediction === "yes" ? "border-success bg-success/10" : "border-muted hover:bg-muted/50"
-                }`}
-              >
-                <RadioGroupItem value="yes" id="yes-option" className="sr-only" />
-                <span className="text-xl font-semibold">YES</span>
-                <span className="text-sm text-muted-foreground mt-1">Odds: {yesOdds.toFixed(2)}x</span>
-              </Label>
-              <Label
-                htmlFor="no-option"
-                className={`flex flex-col items-center justify-between rounded-md border-2 p-4 cursor-pointer ${
-                  prediction === "no" ? "border-destructive bg-destructive/10" : "border-muted hover:bg-muted/50"
-                }`}
-              >
-                <RadioGroupItem value="no" id="no-option" className="sr-only" />
-                <span className="text-xl font-semibold">NO</span>
-                <span className="text-sm text-muted-foreground mt-1">Odds: {noOdds.toFixed(2)}x</span>
-              </Label>
-            </RadioGroup>
-          </div>
-
-          <div className="space-y-2">
-            <Label htmlFor="stake-amount">Stake Amount</Label>
-            <div className="relative">
-              <div className="absolute inset-y-0 left-0 flex items-center pl-3 pointer-events-none">
-                <span className="text-neutral-dark">$</span>
-              </div>
-              <Input
-                id="stake-amount"
-                type="text"
-                value={amount}
-                onChange={handleAmountChange}
-                className="pl-8"
-                placeholder={`Min: $${minStake}, Max: $${maxStake}`}
-              />
+          <div className="bg-green-50 rounded-lg p-4 space-y-3">
+            <div className="flex justify-between items-center">
+              <span className="text-sm text-green-700">Your Position:</span>
+              <span className={`font-bold ${userBetDetails.choice === "yes" ? "text-green-600" : "text-red-600"}`}>
+                {userBetDetails.choice.toUpperCase()}
+              </span>
             </div>
-            <div className="text-xs text-neutral-dark">
-              Min: ${minStake}, Max: ${maxStake}
+
+            <div className="flex justify-between items-center">
+              <span className="text-sm text-green-700">Your Stake:</span>
+              <span className="font-bold">₦{userBetDetails.stake.toLocaleString()}</span>
+            </div>
+
+            <div className="flex justify-between items-center">
+              <span className="text-sm text-green-700">Potential Winnings:</span>
+              <span className="font-bold text-green-600">₦{userBetDetails.potentialWinnings.toLocaleString()}</span>
+            </div>
+
+            <div className="flex justify-between items-center">
+              <span className="text-sm text-green-700">Potential Profit:</span>
+              <span className="font-bold text-green-600">
+                ₦{(userBetDetails.potentialWinnings - userBetDetails.stake).toLocaleString()}
+              </span>
             </div>
           </div>
 
-          {prediction && amount && Number.parseFloat(amount) >= minStake && (
-            <div className="bg-neutral-light p-4 rounded-md space-y-2">
-              <div className="flex justify-between text-sm">
-                <span className="text-neutral-dark">Your stake:</span>
-                <span>${Number.parseFloat(amount).toFixed(2)}</span>
+          {wager && (
+            <div className="bg-gray-50 rounded-lg p-4 space-y-3">
+              <h4 className="font-medium text-gray-800">Current Wager Stats</h4>
+
+              <div className="flex justify-between items-center">
+                <div className="flex items-center text-sm text-gray-600">
+                  <Users className="h-4 w-4 mr-1" />
+                  <span>Total Participants:</span>
+                </div>
+                <span className="font-medium">{wager.participantCount}</span>
               </div>
-              <div className="flex justify-between text-sm">
-                <span className="text-neutral-dark">Potential profit:</span>
-                <span className="text-success font-medium">+${potentialWinnings.toFixed(2)}</span>
+
+              <div className="flex justify-between items-center">
+                <div className="flex items-center text-sm text-gray-600">
+                  <DollarSign className="h-4 w-4 mr-1" />
+                  <span>Total Pool:</span>
+                </div>
+                <span className="font-medium">₦{wager.totalPool.toLocaleString()}</span>
               </div>
-              <div className="flex justify-between text-sm font-medium">
-                <span>Total return:</span>
-                <span>${(Number.parseFloat(amount) + potentialWinnings).toFixed(2)}</span>
+
+              <div className="grid grid-cols-2 gap-2 mt-3">
+                <div className="text-center p-2 bg-green-100 rounded">
+                  <div className="text-xs text-green-600">YES Pool</div>
+                  <div className="font-bold text-green-700">₦{(wager.totalYesStake || 0).toLocaleString()}</div>
+                </div>
+                <div className="text-center p-2 bg-red-100 rounded">
+                  <div className="text-xs text-red-600">NO Pool</div>
+                  <div className="font-bold text-red-700">₦{(wager.totalNoStake || 0).toLocaleString()}</div>
+                </div>
               </div>
             </div>
           )}
-        </form>
+
+          <Button
+            onClick={() => {
+              setUserHasBet(false)
+              setUserBetDetails(null)
+            }}
+            variant="outline"
+            className="w-full"
+          >
+            Place Another Bet
+          </Button>
+        </CardContent>
+      </Card>
+    )
+  }
+
+  return (
+    <Card className="border-t-4 border-t-primary">
+      <CardHeader>
+        <CardTitle>Place Your Bet</CardTitle>
+        <CardDescription>Choose your side and stake amount</CardDescription>
+      </CardHeader>
+      <CardContent>
+        {error && (
+          <Alert className="mb-4 border-red-200 bg-red-50">
+            <AlertDescription className="text-red-800">{error}</AlertDescription>
+          </Alert>
+        )}
+
+        <div className="space-y-6">
+          <div>
+            <Label className="text-base font-medium">Choose Your Side</Label>
+            <RadioGroup value={choice} onValueChange={(value: "yes" | "no") => setChoice(value)} className="mt-3">
+              <div className="flex items-center space-x-3 p-4 border rounded-lg hover:bg-green-50 transition-colors">
+                <RadioGroupItem value="yes" id="yes" />
+                <Label htmlFor="yes" className="flex-1 cursor-pointer">
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center">
+                      <TrendingUp className="mr-2 h-4 w-4 text-green-600" />
+                      <span className="font-medium text-green-700">Yes</span>
+                    </div>
+                    <div className="text-sm">
+                      <span className="font-medium text-green-600">{(yesOdds || 0).toFixed(2)}x</span>
+                    </div>
+                  </div>
+                </Label>
+              </div>
+
+              <div className="flex items-center space-x-3 p-4 border rounded-lg hover:bg-red-50 transition-colors">
+                <RadioGroupItem value="no" id="no" />
+                <Label htmlFor="no" className="flex-1 cursor-pointer">
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center">
+                      <TrendingDown className="mr-2 h-4 w-4 text-red-600" />
+                      <span className="font-medium text-red-700">No</span>
+                    </div>
+                    <div className="text-sm">
+                      <span className="font-medium text-red-600">{(noOdds || 0).toFixed(2)}x</span>
+                    </div>
+                  </div>
+                </Label>
+              </div>
+            </RadioGroup>
+          </div>
+
+          <div>
+            <Label htmlFor="stake" className="text-base font-medium">
+              Stake Amount (₦)
+            </Label>
+            <Input
+              id="stake"
+              type="number"
+              value={stake}
+              onChange={(e) => setStake(e.target.value)}
+              placeholder={`Min: ₦${minStake.toLocaleString()}`}
+              min={minStake}
+              max={maxStake}
+              step="0.01"
+              className="mt-2"
+            />
+            <div className="flex justify-between text-sm text-gray-500 mt-1">
+              <span>Min: ₦{minStake.toLocaleString()}</span>
+              <span>Max: ₦{maxStake.toLocaleString()}</span>
+            </div>
+          </div>
+
+          {stakeAmount > 0 && (
+            <div className="p-4 bg-gray-50 rounded-lg">
+              <div className="flex justify-between items-center">
+                <span className="text-sm text-gray-600">Potential Winnings:</span>
+                <span className="font-bold text-lg">₦{potentialWinnings.toLocaleString()}</span>
+              </div>
+              <div className="flex justify-between items-center mt-1">
+                <span className="text-sm text-gray-600">Profit:</span>
+                <span className="font-medium text-green-600">
+                  ₦{(potentialWinnings - stakeAmount).toLocaleString()}
+                </span>
+              </div>
+            </div>
+          )}
+
+          <Button
+            type="button"
+            className="w-full"
+            disabled={loading || !stake || stakeAmount <= 0}
+            onClick={handleSubmit}
+          >
+            {loading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+            {loading ? "Placing Bet..." : `Place Bet - ₦${stakeAmount.toLocaleString()}`}
+          </Button>
+        </div>
       </CardContent>
-      <CardFooter>
-        <Button
-          onClick={handleSubmit}
-          disabled={!prediction || !amount || Number.parseFloat(amount) < minStake || isSubmitting}
-          className="w-full bg-accent hover:bg-accent-dark"
-        >
-          {isSubmitting ? "Processing..." : "Place Bet"}
-        </Button>
-      </CardFooter>
     </Card>
   )
 }

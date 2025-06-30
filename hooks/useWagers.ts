@@ -1,5 +1,4 @@
-// hooks/useWagers.ts
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import wagersService, { Wager, WagersResponse, CreateWagerData, UpdateWagerData } from '../services/wagers';
 
 interface UseWagersOptions {
@@ -44,7 +43,6 @@ export const useWagers = (options: UseWagersOptions = {}) => {
     
     try {
       const response = await wagersService.createWager(data);
-      // Refresh the list after creating
       await fetchWagers();
       return response;
     } catch (err) {
@@ -62,7 +60,6 @@ export const useWagers = (options: UseWagersOptions = {}) => {
     
     try {
       const response = await wagersService.updateWager(id, data);
-      // Update the wager in the local state
       setWagers(prev => prev.map(w => w.id === id ? response.wager : w));
       return response;
     } catch (err) {
@@ -80,7 +77,6 @@ export const useWagers = (options: UseWagersOptions = {}) => {
     
     try {
       const response = await wagersService.deleteWager(id);
-      // Remove the wager from local state
       setWagers(prev => prev.filter(w => w.id !== id));
       return response;
     } catch (err) {
@@ -111,14 +107,18 @@ export const useWagers = (options: UseWagersOptions = {}) => {
   };
 };
 
-// Hook for single wager
 export const useWager = (id: number) => {
   const [wager, setWager] = useState<Wager | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const intervalRef = useRef<NodeJS.Timeout | null>(null);
 
   const fetchWager = useCallback(async () => {
-    if (!id) return;
+    // Don't fetch if id is invalid
+    if (!id || id <= 0) {
+      setWager(null);
+      return;
+    }
     
     setLoading(true);
     setError(null);
@@ -128,18 +128,22 @@ export const useWager = (id: number) => {
       setWager(response.wager);
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to fetch wager');
+      setWager(null);
     } finally {
       setLoading(false);
     }
   }, [id]);
 
   const placeBet = async (choice: 'yes' | 'no', stake: number) => {
+    if (!id || id <= 0) {
+      throw new Error('Invalid wager ID');
+    }
+
     setLoading(true);
     setError(null);
     
     try {
       const response = await wagersService.placeBet(id, { choice, stake });
-      // Refresh the wager after placing bet
       await fetchWager();
       return response;
     } catch (err) {
@@ -152,7 +156,28 @@ export const useWager = (id: number) => {
   };
 
   useEffect(() => {
-    fetchWager();
+    // Clear any existing interval
+    if (intervalRef.current) {
+      clearInterval(intervalRef.current);
+    }
+
+    // Only start fetching if we have a valid ID
+    if (id && id > 0) {
+      fetchWager();
+      
+      // Set up polling with cleanup
+      intervalRef.current = setInterval(() => {
+        fetchWager();
+      }, 10000); // Poll every 10 seconds instead of 5 to reduce load
+    }
+
+    // Cleanup function
+    return () => {
+      if (intervalRef.current) {
+        clearInterval(intervalRef.current);
+        intervalRef.current = null;
+      }
+    };
   }, [fetchWager]);
 
   return {
@@ -165,7 +190,6 @@ export const useWager = (id: number) => {
   };
 };
 
-// Hook for wagers by category
 export const useWagersByCategory = (category: string, options: { page?: number; limit?: number } = {}) => {
   const [wagers, setWagers] = useState<Wager[]>([]);
   const [loading, setLoading] = useState(false);

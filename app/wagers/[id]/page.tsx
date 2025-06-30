@@ -9,11 +9,24 @@ import { PlaceBetForm } from "@/components/place-bet-form"
 import { WagerActivity } from "@/components/wager-activity"
 import { WagerDiscussion } from "@/components/wager-discussion"
 import { Clock, Users, DollarSign, AlertCircle, Share2 } from "lucide-react"
+import { useEffect, useState } from "react"
 
-export default function WagerDetailPage({ params }: { params: { id: string } }) {
-  const { wager, loading, error } = useWager(Number(params.id))
+export default function WagerDetailPage({ params }: { params: Promise<{ id: string }> }) {
+  const [wagerId, setWagerId] = useState<number | null>(null)
+  
+  useEffect(() => {
+    params.then((resolvedParams) => {
+      const id = Number(resolvedParams.id)
+      setWagerId(id)
+    }).catch((error) => {
+      console.error('Error resolving params:', error)
+    })
+  }, [params])
 
-  if (loading) {
+  const { wager, loading, error } = useWager(wagerId!)
+
+  // ONLY CHANGE: Fixed loading condition to prevent refresh loop
+  if (wagerId === null || (loading && !wager)) {
     return <div className="container mx-auto px-4 py-8">Loading...</div>
   }
 
@@ -25,14 +38,27 @@ export default function WagerDetailPage({ params }: { params: { id: string } }) 
     return <div className="container mx-auto px-4 py-8">Wager not found</div>
   }
 
-  const yesPool = wager.yesPool ?? 0
-  const noPool = wager.noPool ?? 0
-  const totalPool = yesPool + noPool
-  const yesPercentage = totalPool > 0 ? (yesPool / totalPool) * 100 : 0
-  const noPercentage = totalPool > 0 ? (noPool / totalPool) * 100 : 0
-  const yesOdds = yesPool > 0 ? totalPool / yesPool : 0
-  const noOdds = noPool > 0 ? totalPool / noPool : 0
-  const platformFee = totalPool * 0.1 // 10% fee
+  const totalYesStake = wager.totalYesStake ?? 0
+  const totalNoStake = wager.totalNoStake ?? 0
+  const totalPool = wager.totalPool
+  const yesPercentage = totalPool > 0 ? (totalYesStake / totalPool) * 100 : 0
+  const noPercentage = totalPool > 0 ? (totalNoStake / totalPool) * 100 : 0
+  const yesOdds = wager.multiplierYes ?? 0
+  const noOdds = wager.multiplierNo ?? 0
+  const platformFee = totalPool * 0.1
+
+  // Safe share handler
+  const handleShare = (e: React.MouseEvent<HTMLButtonElement>) => {
+    e.preventDefault()
+    e.stopPropagation()
+    
+    try {
+      navigator.clipboard.writeText(window.location.href)
+      console.log('Link copied successfully')
+    } catch (err) {
+      console.error('Failed to copy link:', err)
+    }
+  }
 
   return (
     <div className="container mx-auto px-4 py-8">
@@ -60,7 +86,7 @@ export default function WagerDetailPage({ params }: { params: { id: string } }) 
               </div>
               <div className="flex items-center">
                 <DollarSign className="h-4 w-4 mr-1" />
-                <span>Total pool: ${totalPool.toLocaleString()}</span>
+                <span>Total pool: ₦{totalPool.toLocaleString()}</span>
               </div>
               <div>
                 <span>
@@ -70,6 +96,18 @@ export default function WagerDetailPage({ params }: { params: { id: string } }) 
             </div>
           </div>
 
+          {wager.predictedWinnings && (
+            <Card>
+              <CardHeader>
+                <CardTitle>Your Predicted Winnings</CardTitle>
+                <CardDescription>Based on current odds and your bet</CardDescription>
+              </CardHeader>
+              <CardContent>
+                <div className="text-2xl font-bold">₦{wager.predictedWinnings.toLocaleString()}</div>
+              </CardContent>
+            </Card>
+          )}
+
           <Tabs defaultValue="activity" className="w-full">
             <TabsList className="mb-6">
               <TabsTrigger value="activity">Recent Activity</TabsTrigger>
@@ -77,10 +115,10 @@ export default function WagerDetailPage({ params }: { params: { id: string } }) 
               <TabsTrigger value="rules">Rules & Resolution</TabsTrigger>
             </TabsList>
             <TabsContent value="activity">
-              <WagerActivity wagerId={wager.id.toString()} />
+              <WagerActivity wagerId={wagerId.toString()} />
             </TabsContent>
             <TabsContent value="discussion">
-              <WagerDiscussion wagerId={wager.id.toString()} />
+              <WagerDiscussion wagerId={wagerId.toString()} />
             </TabsContent>
             <TabsContent value="rules">
               <Card>
@@ -139,12 +177,12 @@ export default function WagerDetailPage({ params }: { params: { id: string } }) 
               <div className="grid grid-cols-2 gap-4">
                 <div className="bg-neutral-light p-4 rounded-md">
                   <div className="text-sm text-neutral-dark">Yes Pool</div>
-                  <div className="text-xl font-bold">${yesPool.toLocaleString()}</div>
+                  <div className="text-xl font-bold">₦{totalYesStake.toLocaleString()}</div>
                   <div className="text-sm font-medium text-success">Odds: {yesOdds.toFixed(2)}x</div>
                 </div>
                 <div className="bg-neutral-light p-4 rounded-md">
                   <div className="text-sm text-neutral-dark">No Pool</div>
-                  <div className="text-xl font-bold">${noPool.toLocaleString()}</div>
+                  <div className="text-xl font-bold">₦{totalNoStake.toLocaleString()}</div>
                   <div className="text-sm font-medium text-destructive">Odds: {noOdds.toFixed(2)}x</div>
                 </div>
               </div>
@@ -152,22 +190,22 @@ export default function WagerDetailPage({ params }: { params: { id: string } }) 
               <div className="border-t pt-4">
                 <div className="flex justify-between text-sm mb-1">
                   <span className="text-neutral-dark">Total Pool</span>
-                  <span className="font-medium">${totalPool.toLocaleString()}</span>
+                  <span className="font-medium">₦{totalPool.toLocaleString()}</span>
                 </div>
                 <div className="flex justify-between text-sm mb-1">
                   <span className="text-neutral-dark">Platform Fee (10%)</span>
-                  <span className="font-medium">${platformFee.toLocaleString()}</span>
+                  <span className="font-medium">₦{platformFee.toLocaleString()}</span>
                 </div>
                 <div className="flex justify-between text-sm">
                   <span className="text-neutral-dark">Payout Pool</span>
-                  <span className="font-medium">${(totalPool - platformFee).toLocaleString()}</span>
+                  <span className="font-medium">₦{(totalPool - platformFee).toLocaleString()}</span>
                 </div>
               </div>
             </CardContent>
           </Card>
 
           <PlaceBetForm
-            wagerId={wager.id.toString()}
+            wagerId={wagerId.toString()}
             minStake={wager.minStake ?? 0}
             maxStake={wager.maxStake ?? Infinity}
             yesOdds={yesOdds}
@@ -179,7 +217,12 @@ export default function WagerDetailPage({ params }: { params: { id: string } }) 
               <CardTitle className="text-lg">Share this Wager</CardTitle>
             </CardHeader>
             <CardContent>
-              <Button className="w-full" variant="outline">
+              <Button 
+                className="w-full" 
+                variant="outline"
+                onClick={handleShare}
+                type="button"
+              >
                 <Share2 className="mr-2 h-4 w-4" />
                 Copy Link
               </Button>
