@@ -1,6 +1,6 @@
 "use client"
 
-import { useState } from "react"
+import { useState, useEffect } from "react"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Input } from "@/components/ui/input"
@@ -32,6 +32,23 @@ export function PlaceBetForm({ wagerId, minStake, maxStake, yesOdds, noOdds }: P
   } | null>(null)
 
   const { wager, placeBet } = useWager(Number(wagerId))
+
+  useEffect(() => {
+    // Check localStorage to see if user has already bet on this wager
+    const betKey = `bet_${wagerId}`
+    const savedBet = localStorage.getItem(betKey)
+
+    if (savedBet) {
+      try {
+        const betDetails = JSON.parse(savedBet)
+        setUserHasBet(true)
+        setUserBetDetails(betDetails)
+      } catch (error) {
+        console.error("Error parsing saved bet:", error)
+        localStorage.removeItem(betKey)
+      }
+    }
+  }, [wagerId])
 
   const stakeAmount = Number.parseFloat(stake) || 0
   const potentialWinnings = choice === "yes" ? stakeAmount * (yesOdds || 1) : stakeAmount * (noOdds || 1)
@@ -71,6 +88,15 @@ export function PlaceBetForm({ wagerId, minStake, maxStake, yesOdds, noOdds }: P
 
       setSuccess(true)
       setUserHasBet(true)
+
+      const betKey = `bet_${wagerId}`
+      const betDetailsToSave = {
+        choice,
+        stake: stakeAmount,
+        potentialWinnings,
+      }
+      localStorage.setItem(betKey, JSON.stringify(betDetailsToSave))
+
       setStake("")
 
       // Show success message for 3 seconds
@@ -163,16 +189,12 @@ export function PlaceBetForm({ wagerId, minStake, maxStake, yesOdds, noOdds }: P
             </div>
           )}
 
-          <Button
-            onClick={() => {
-              setUserHasBet(false)
-              setUserBetDetails(null)
-            }}
-            variant="outline"
-            className="w-full"
-          >
-            Place Another Bet
-          </Button>
+          <div className="text-center p-3 bg-blue-50 rounded-lg">
+            <p className="text-sm text-blue-800 font-medium">✅ You can only place one bet per wager</p>
+            <p className="text-xs text-blue-600 mt-1">
+              Your bet is locked in and will be settled when the wager resolves
+            </p>
+          </div>
         </CardContent>
       </Card>
     )
