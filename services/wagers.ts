@@ -1,6 +1,8 @@
 import authService from './auth';
 
 export interface Wager {
+    yesPool: number;
+    noPool: number;
     id: number;
     title: string;
     description: string;
