@@ -6,8 +6,9 @@ import { Input } from "@/components/ui/input"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { Badge } from "@/components/ui/badge"
 import { Card, CardContent, CardFooter, CardHeader, CardTitle } from "@/components/ui/card"
+import { Alert, AlertDescription } from "@/components/ui/alert"
 import Link from "next/link"
-import { Search, Filter, Clock, Users, TrendingUp } from "lucide-react"
+import { Search, Filter, Clock, Users, TrendingUp, CheckCircle, XCircle } from "lucide-react"
 import { useWagers } from "@/hooks/useWagers"
 import { useAuthService } from "@/services/auth"
 import { wagersService } from "@/services/wagers"
@@ -28,9 +29,12 @@ export default function WagersPage() {
   const [selectedCategory, setSelectedCategory] = useState("All")
   const [searchQuery, setSearchQuery] = useState("")
   const [sortBy, setSortBy] = useState("newest")
+  const [resolvingWager, setResolvingWager] = useState<number | null>(null)
+  const [resolveError, setResolveError] = useState<string | null>(null)
+  const [resolveSuccess, setResolveSuccess] = useState<string | null>(null)
   
-  const { user, isAuthenticated } = useAuthService() // Get user role from auth service
-  const { wagers, loading, error } = useWagers({
+  const { user, isAuthenticated } = useAuthService()
+  const { wagers, loading, error, fetchWagers } = useWagers({
     category: selectedCategory === "All" ? undefined : selectedCategory,
     status: "active",
     limit: 20,
@@ -74,14 +78,31 @@ export default function WagersPage() {
     .slice(0, 4)
 
   const handleResolveWager = async (wagerId: number, result: 'yes' | 'no') => {
+    setResolvingWager(wagerId)
+    setResolveError(null)
+    setResolveSuccess(null)
+    
     try {
       await wagersService.resolveWager(wagerId, { result })
-      // Refresh the page or update state to reflect the resolved wager
-      window.location.reload()
+      setResolveSuccess(`Wager resolved successfully as "${result.toUpperCase()}"`)
+      
+      // Refresh the wagers list
+      await fetchWagers()
+      
+      // Clear success message after 3 seconds
+      setTimeout(() => setResolveSuccess(null), 3000)
     } catch (error) {
       console.error('Failed to resolve wager:', error)
+      setResolveError(error instanceof Error ? error.message : 'Failed to resolve wager')
+      
+      // Clear error message after 5 seconds
+      setTimeout(() => setResolveError(null), 5000)
+    } finally {
+      setResolvingWager(null)
     }
   }
+
+  const isAdmin = isAuthenticated && user?.role === 'admin'
 
   const renderWagerCard = (wager: any) => {
     const totalYesStake = wager.totalYesStake ?? 0
@@ -91,6 +112,7 @@ export default function WagersPage() {
     const noPercentage = totalPool > 0 ? (totalNoStake / totalPool) * 100 : 0
     const yesOdds = wager.multiplierYes ?? 0
     const noOdds = wager.multiplierNo ?? 0
+    const isResolving = resolvingWager === wager.id
 
     return (
       <Card key={wager.id} className="overflow-hidden">
@@ -146,19 +168,36 @@ export default function WagersPage() {
           </div>
         </CardContent>
         <CardFooter className="pt-0">
-          {isAuthenticated && user?.role === 'admin' ? (
-            <div className="flex gap-2 w-full">
-              <Button 
-                className="w-full bg-success hover:bg-success-dark" 
-                onClick={() => handleResolveWager(wager.id, 'yes')}
-              >
-                Yes
-              </Button>
-              <Button 
-                className="w-full bg-destructive hover:bg-destructive-dark" 
-                onClick={() => handleResolveWager(wager.id, 'no')}
-              >
-                No
+          {isAdmin ? (
+            <div className="w-full space-y-2">
+              <div className="flex gap-2">
+                <Button 
+                  className="flex-1 bg-success hover:bg-success/90 text-white" 
+                  onClick={() => handleResolveWager(wager.id, 'yes')}
+                  disabled={isResolving}
+                >
+                  {isResolving ? (
+                    <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2"></div>
+                  ) : (
+                    <CheckCircle className="h-4 w-4 mr-2" />
+                  )}
+                  Resolve Yes
+                </Button>
+                <Button 
+                  className="flex-1 bg-destructive hover:bg-destructive/90 text-white" 
+                  onClick={() => handleResolveWager(wager.id, 'no')}
+                  disabled={isResolving}
+                >
+                  {isResolving ? (
+                    <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2"></div>
+                  ) : (
+                    <XCircle className="h-4 w-4 mr-2" />
+                  )}
+                  Resolve No
+                </Button>
+              </div>
+              <Button asChild variant="outline" className="w-full">
+                <Link href={`/wagers/${wager.id}`}>View Details</Link>
               </Button>
             </div>
           ) : (
@@ -173,10 +212,33 @@ export default function WagersPage() {
 
   return (
     <div className="container mx-auto px-4 py-8">
+      {/* Success/Error Alerts */}
+      {resolveSuccess && (
+        <Alert className="mb-4 border-success bg-success/5">
+          <CheckCircle className="h-4 w-4 text-success" />
+          <AlertDescription className="text-success">{resolveSuccess}</AlertDescription>
+        </Alert>
+      )}
+      
+      {resolveError && (
+        <Alert className="mb-4 border-destructive bg-destructive/5">
+          <XCircle className="h-4 w-4 text-destructive" />
+          <AlertDescription className="text-destructive">{resolveError}</AlertDescription>
+        </Alert>
+      )}
+
       <div className="flex flex-col md:flex-row justify-between items-start md:items-center mb-8 gap-4">
         <div>
-          <h1 className="text-3xl font-bold text-primary">Prediction Markets</h1>
-          <p className="text-neutral-dark mt-1">Browse and join prediction markets on various topics</p>
+          <h1 className="text-3xl font-bold text-primary">
+            Prediction Markets
+            {isAdmin && <Badge className="ml-2 bg-orange-500">Admin</Badge>}
+          </h1>
+          <p className="text-neutral-dark mt-1">
+            {isAdmin 
+              ? "Browse markets and resolve wagers as admin" 
+              : "Browse and join prediction markets on various topics"
+            }
+          </p>
         </div>
         <Button asChild className="bg-accent hover:bg-accent-dark">
           <Link href="/wagers/create">Create a Wager</Link>
