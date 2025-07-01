@@ -32,6 +32,7 @@ interface User {
   id: number;
   username: string;
   email: string;
+  role: 'user' | 'admin';
 }
 
 // Auth state type
@@ -235,6 +236,7 @@ class AuthService {
             id: user.id,
             username: user.username,
             email: user.email,
+            role: data.user.role,
           },
           isAuthenticated: true,
           isLoading: false,
@@ -333,6 +335,7 @@ class AuthService {
         id: data.id || data.user?.id,
         username: data.username || data.user?.username,
         email: data.email || data.user?.email,
+        role: data.role,
       };
 
       this.updateAuthState({

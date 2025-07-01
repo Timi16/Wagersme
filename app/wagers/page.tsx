@@ -9,6 +9,8 @@ import { Card, CardContent, CardFooter, CardHeader, CardTitle } from "@/componen
 import Link from "next/link"
 import { Search, Filter, Clock, Users, TrendingUp } from "lucide-react"
 import { useWagers } from "@/hooks/useWagers"
+import { useAuthService } from "@/services/auth"
+import { wagersService } from "@/services/wagers"
 
 const categories = [
   "All",
@@ -26,7 +28,8 @@ export default function WagersPage() {
   const [selectedCategory, setSelectedCategory] = useState("All")
   const [searchQuery, setSearchQuery] = useState("")
   const [sortBy, setSortBy] = useState("newest")
-
+  
+  const { user, isAuthenticated } = useAuthService() // Get user role from auth service
   const { wagers, loading, error } = useWagers({
     category: selectedCategory === "All" ? undefined : selectedCategory,
     status: "active",
@@ -70,8 +73,17 @@ export default function WagersPage() {
     .sort((a, b) => new Date(a.deadline).getTime() - new Date(b.deadline).getTime())
     .slice(0, 4)
 
+  const handleResolveWager = async (wagerId: number, result: 'yes' | 'no') => {
+    try {
+      await wagersService.resolveWager(wagerId, { result })
+      // Refresh the page or update state to reflect the resolved wager
+      window.location.reload()
+    } catch (error) {
+      console.error('Failed to resolve wager:', error)
+    }
+  }
+
   const renderWagerCard = (wager: any) => {
-    // Use the same calculation as wager detail page
     const totalYesStake = wager.totalYesStake ?? 0
     const totalNoStake = wager.totalNoStake ?? 0
     const totalPool = wager.totalPool
@@ -98,7 +110,6 @@ export default function WagersPage() {
         </CardHeader>
         <CardContent>
           <div className="space-y-4">
-            {/* Current Odds Section - Same as Wager Detail Page */}
             <div>
               <div className="flex justify-between text-sm mb-2">
                 <span className="font-medium text-success">Yes: {yesPercentage.toFixed(0)}%</span>
@@ -135,9 +146,26 @@ export default function WagersPage() {
           </div>
         </CardContent>
         <CardFooter className="pt-0">
-          <Button asChild className="w-full bg-accent hover:bg-accent-dark">
-            <Link href={`/wagers/${wager.id}`}>Place Bet</Link>
-          </Button>
+          {isAuthenticated && user?.role === 'admin' ? (
+            <div className="flex gap-2 w-full">
+              <Button 
+                className="w-full bg-success hover:bg-success-dark" 
+                onClick={() => handleResolveWager(wager.id, 'yes')}
+              >
+                Yes
+              </Button>
+              <Button 
+                className="w-full bg-destructive hover:bg-destructive-dark" 
+                onClick={() => handleResolveWager(wager.id, 'no')}
+              >
+                No
+              </Button>
+            </div>
+          ) : (
+            <Button asChild className="w-full bg-accent hover:bg-accent-dark">
+              <Link href={`/wagers/${wager.id}`}>Place Bet</Link>
+            </Button>
+          )}
         </CardFooter>
       </Card>
     )
