@@ -70,6 +70,79 @@ export default function WagersPage() {
     .sort((a, b) => new Date(a.deadline).getTime() - new Date(b.deadline).getTime())
     .slice(0, 4)
 
+  const renderWagerCard = (wager: any) => {
+    // Use the same calculation as wager detail page
+    const totalYesStake = wager.totalYesStake ?? 0
+    const totalNoStake = wager.totalNoStake ?? 0
+    const totalPool = wager.totalPool
+    const yesPercentage = totalPool > 0 ? (totalYesStake / totalPool) * 100 : 0
+    const noPercentage = totalPool > 0 ? (totalNoStake / totalPool) * 100 : 0
+    const yesOdds = wager.multiplierYes ?? 0
+    const noOdds = wager.multiplierNo ?? 0
+
+    return (
+      <Card key={wager.id} className="overflow-hidden">
+        <CardHeader className="pb-2">
+          <div className="flex justify-between items-start">
+            <Badge className="bg-primary hover:bg-primary">{wager.category}</Badge>
+            <div className="flex items-center text-sm text-neutral-dark">
+              <Clock className="h-4 w-4 mr-1" />
+              <span>{new Date(wager.deadline).toLocaleDateString()}</span>
+            </div>
+          </div>
+          <CardTitle className="text-lg mt-2">
+            <Link href={`/wagers/${wager.id}`} className="hover:text-primary transition-colors">
+              {wager.title}
+            </Link>
+          </CardTitle>
+        </CardHeader>
+        <CardContent>
+          <div className="space-y-4">
+            {/* Current Odds Section - Same as Wager Detail Page */}
+            <div>
+              <div className="flex justify-between text-sm mb-2">
+                <span className="font-medium text-success">Yes: {yesPercentage.toFixed(0)}%</span>
+                <span className="font-medium text-destructive">No: {noPercentage.toFixed(0)}%</span>
+              </div>
+              <div className="flex h-3 rounded-full overflow-hidden">
+                <div className="bg-success" style={{ width: `${yesPercentage}%` }} />
+                <div className="bg-destructive" style={{ width: `${noPercentage}%` }} />
+              </div>
+            </div>
+
+            <div className="grid grid-cols-2 gap-4">
+              <div className="bg-neutral-light p-3 rounded-md">
+                <div className="text-sm text-neutral-dark">Yes Pool</div>
+                <div className="text-lg font-bold">₦{totalYesStake.toLocaleString()}</div>
+                <div className="text-sm font-medium text-success">Odds: {yesOdds.toFixed(2)}x</div>
+              </div>
+              <div className="bg-neutral-light p-3 rounded-md">
+                <div className="text-sm text-neutral-dark">No Pool</div>
+                <div className="text-lg font-bold">₦{totalNoStake.toLocaleString()}</div>
+                <div className="text-sm font-medium text-destructive">Odds: {noOdds.toFixed(2)}x</div>
+              </div>
+            </div>
+
+            <div className="flex justify-between items-center text-sm text-neutral-dark">
+              <div className="flex items-center">
+                <Users className="h-4 w-4 mr-1" />
+                <span>{wager.participantCount} participants</span>
+              </div>
+              <div>
+                <span>Total Pool: ₦{totalPool.toLocaleString()}</span>
+              </div>
+            </div>
+          </div>
+        </CardContent>
+        <CardFooter className="pt-0">
+          <Button asChild className="w-full bg-accent hover:bg-accent-dark">
+            <Link href={`/wagers/${wager.id}`}>Place Bet</Link>
+          </Button>
+        </CardFooter>
+      </Card>
+    )
+  }
+
   return (
     <div className="container mx-auto px-4 py-8">
       <div className="flex flex-col md:flex-row justify-between items-start md:items-center mb-8 gap-4">
@@ -180,208 +253,19 @@ export default function WagersPage() {
 
             <TabsContent value="all">
               <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                {sortedWagers.map((wager) => {
-                  const totalPool = (wager.yesPool ?? 0) + (wager.noPool ?? 0);
-                  const yesPercentage = totalPool ? ((wager.yesPool ?? 0) / totalPool) * 100 : 0;
-                  const noPercentage = totalPool ? ((wager.noPool ?? 0) / totalPool) * 100 : 0;
-                  const yesOdds = (wager.yesPool ?? 0) > 0 ? totalPool / (wager.yesPool ?? 0) : 0;
-                  const noOdds = (wager.noPool ?? 0) > 0 ? totalPool / (wager.noPool ?? 0) : 0;
-
-                  return (
-                    <Card key={wager.id} className="overflow-hidden">
-                      <CardHeader className="pb-2">
-                        <div className="flex justify-between items-start">
-                          <Badge className="bg-primary hover:bg-primary">{wager.category}</Badge>
-                          <div className="flex items-center text-sm text-neutral-dark">
-                            <Clock className="h-4 w-4 mr-1" />
-                            <span>{wager.deadline}</span>
-                          </div>
-                        </div>
-                        <CardTitle className="text-lg mt-2">
-                          <Link href={`/wagers/${wager.id}`} className="hover:text-primary transition-colors">
-                            {wager.title}
-                          </Link>
-                        </CardTitle>
-                      </CardHeader>
-                      <CardContent>
-                        <div className="space-y-4">
-                          <div>
-                            <div className="flex justify-between text-sm mb-1">
-                              <span className="font-medium text-success">Yes: {yesPercentage.toFixed(0)}%</span>
-                              <span className="font-medium text-destructive">No: {noPercentage.toFixed(0)}%</span>
-                            </div>
-                            Virgil                            <div className="flex h-2 rounded-full overflow-hidden">
-                              <div className="bg-success" style={{ width: `${yesPercentage}%` }} />
-                              <div className="bg-destructive" style={{ width: `${noPercentage}%` }} />
-                            </div>
-                          </div>
-                          <div className="grid grid-cols-2 gap-4 text-sm">
-                            <div className="bg-neutral-light p-2 rounded">
-                              <div className="text-neutral-dark">Yes Odds</div>
-                              <div className="font-semibold">{yesOdds.toFixed(2)}x</div>
-                            </div>
-                            <div className="bg-neutral-light p-2 rounded">
-                              <div className="text-neutral-dark">No Odds</div>
-                              <div className="font-semibold">{noOdds.toFixed(2)}x</div>
-                            </div>
-                          </div>
-                          <div className="flex justify-between items-center text-sm text-neutral-dark">
-                            <div className="flex items-center">
-                              <Users className="h-4 w-4 mr-1" />
-                              <span>{wager.participantCount} participants</span>
-                            </div>
-                            <div>
-                              <span>Min Stake: ${wager.minStake}</span>
-                            </div>
-                          </div>
-                        </div>
-                      </CardContent>
-                      <CardFooter className="pt-0">
-                        <Button asChild className="w-full bg-accent hover:bg-accent-dark">
-                          <Link href={`/wagers/${wager.id}`}>Place Bet</Link>
-                        </Button>
-                      </CardFooter>
-                    </Card>
-                  )
-                })}
+                {sortedWagers.map(renderWagerCard)}
               </div>
             </TabsContent>
 
             <TabsContent value="trending">
               <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                {trendingWagers.map((wager) => {
-                  const totalPool = (wager.yesPool ?? 0) + (wager.noPool ?? 0);
-                  const yesPercentage = totalPool ? ((wager.yesPool ?? 0) / totalPool) * 100 : 0;
-                  const noPercentage = totalPool ? ((wager.noPool ?? 0) / totalPool) * 100 : 0;
-                  const yesOdds = (wager.yesPool ?? 0) > 0 ? totalPool / (wager.yesPool ?? 0) : 0;
-                  const noOdds = (wager.noPool ?? 0) > 0 ? totalPool / (wager.noPool ?? 0) : 0;
-
-                  return (
-                    <Card key={wager.id} className="overflow-hidden">
-                      <CardHeader className="pb-2">
-                        <div className="flex justify-between items-start">
-                          <Badge className="bg-secondary hover:bg-secondary">{wager.category}</Badge>
-                          <div className="flex items-center text-sm text-neutral-dark">
-                            <Clock className="h-4 w-4 mr-1" />
-                            <span>{wager.deadline}</span>
-                          </div>
-                        </div>
-                        <CardTitle className="text-lg mt-2">
-                          <Link href={`/wagers/${wager.id}`} className="hover:text-secondary transition-colors">
-                            {wager.title}
-                          </Link>
-                        </CardTitle>
-                      </CardHeader>
-                      <CardContent>
-                        <div className="space-y-4">
-                          <div>
-                            <div className="flex justify-between text-sm mb-1">
-                              <span className="font-medium text-success">Yes: {yesPercentage.toFixed(0)}%</span>
-                              <span className="font-medium text-destructive">No: {noPercentage.toFixed(0)}%</span>
-                            </div>
-                            <div className="flex h-2 rounded-full overflow-hidden">
-                              <div className="bg-success" style={{ width: `${yesPercentage}%` }} />
-                              <div className="bg-destructive" style={{ width: `${noPercentage}%` }} />
-                            </div>
-                          </div>
-                          <div className="grid grid-cols-2 gap-4 text-sm">
-                            <div className="bg-neutral-light p-2 rounded">
-                              <div className="text-neutral-dark">Yes Odds</div>
-                              <div className="font-semibold">{yesOdds.toFixed(2)}x</div>
-                            </div>
-                            <div className="bg-neutral-light p-2 rounded">
-                              <div className="text-neutral-dark">No Odds</div>
-                              <div className="font-semibold">{noOdds.toFixed(2)}x</div>
-                            </div>
-                          </div>
-                          <div className="flex justify-between items-center text-sm text-neutral-dark">
-                            <div className="flex items-center">
-                              <Users className="h-4 w-4 mr-1" />
-                              <span>{wager.participantCount} participants</span>
-                            </div>
-                            <div>
-                              <span>Min Stake: ${wager.minStake}</span>
-                            </div>
-                          </div>
-                        </div>
-                      </CardContent>
-                      <CardFooter className="pt-0">
-                        <Button asChild className="w-full bg-accent hover:bg-accent-dark">
-                          <Link href={`/wagers/${wager.id}`}>Place Bet</Link>
-                        </Button>
-                      </CardFooter>
-                    </Card>
-                  )
-                })}
+                {trendingWagers.map(renderWagerCard)}
               </div>
             </TabsContent>
 
             <TabsContent value="ending-soon">
               <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                {endingSoonWagers.map((wager) => {
-                  const totalPool = (wager.yesPool ?? 0) + (wager.noPool ?? 0);
-                  const yesPercentage = totalPool ? ((wager.yesPool ?? 0) / totalPool) * 100 : 0;
-                  const noPercentage = totalPool ? ((wager.noPool ?? 0) / totalPool) * 100 : 0;
-                  const yesOdds = (wager.yesPool ?? 0) > 0 ? totalPool / (wager.yesPool ?? 0) : 0;
-                  const noOdds = (wager.noPool ?? 0) > 0 ? totalPool / (wager.noPool ?? 0) : 0;
-
-                  return (
-                    <Card key={wager.id} className="overflow-hidden">
-                      <CardHeader className="pb-2">
-                        <div className="flex justify-between items-start">
-                          <Badge className="bg-accent hover:bg-accent">{wager.category}</Badge>
-                          <div className="flex items-center text-sm text-neutral-dark">
-                            <Clock className="h-4 w-4 mr-1" />
-                            <span>{wager.deadline}</span>
-                          </div>
-                        </div>
-                        <CardTitle className="text-lg mt-2">
-                          <Link href={`/wagers/${wager.id}`} className="hover:text-accent transition-colors">
-                            {wager.title}
-                          </Link>
-                        </CardTitle>
-                      </CardHeader>
-                      <CardContent>
-                        <div className="space-y-4">
-                          <div>
-                            <div className="flex justify-between text-sm mb-1">
-                              <span className="font-medium text-success">Yes: {yesPercentage.toFixed(0)}%</span>
-                              <span className="font-medium text-destructive">No: {noPercentage.toFixed(0)}%</span>
-                            </div>
-                            <div className="flex h-2 rounded-full overflow-hidden">
-                              <div className="bg-success" style={{ width: `${yesPercentage}%` }} />
-                              <div className="bg-destructive" style={{ width: `${noPercentage}%` }} />
-                            </div>
-                          </div>
-                          <div className="grid grid-cols-2 gap-4 text-sm">
-                            <div className="bg-neutral-light p-2 rounded">
-                              <div className="text-neutral-dark">Yes Odds</div>
-                              <div className="font-semibold">{yesOdds.toFixed(2)}x</div>
-                            </div>
-                            <div className="bg-neutral-light p-2 rounded">
-                              <div className="text-neutral-dark">No Odds</div>
-                              <div className="font-semibold">{noOdds.toFixed(2)}x</div>
-                            </div>
-                          </div>
-                          <div className="flex justify-between items-center text-sm text-neutral-dark">
-                            <div className="flex items-center">
-                              <Users className="h-4 w-4 mr-1" />
-                              <span>{wager.participantCount} participants</span>
-                            </div>
-                            <div>
-                              <span>Min Stake: ${wager.minStake}</span>
-                            </div>
-                          </div>
-                        </div>
-                      </CardContent>
-                      <CardFooter className="pt-0">
-                        <Button asChild className="w-full bg-accent hover:bg-accent-dark">
-                          <Link href={`/wagers/${wager.id}`}>Place Bet</Link>
-                        </Button>
-                      </CardFooter>
-                    </Card>
-                  )
-                })}
+                {endingSoonWagers.map(renderWagerCard)}
               </div>
             </TabsContent>
           </Tabs>
